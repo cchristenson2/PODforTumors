@@ -56,26 +56,24 @@ function [A,B,H] = OperatorInterp_noAC(k,d,bounds,A_lib,B_lib,H_lib)
     %Get operators to use for interp
     %1 - low k
     kp_str = replace(num2str(k_low,fmt),'.','_');
-    d_str  = replace(num2str(d_low,fmt),'.','_');
-    name = ['kp',kp_str,'d',d_str];
+    kp_str = replace(kp_str,'-','n');
+    name = ['kp',kp_str];
     eval(['B1 = B_lib.',name,'_B;']);
     eval(['H1 = H_lib.',name,'_H;']);
     %2 - up k
     kp_str = replace(num2str(k_up,fmt),'.','_');
-    d_str  = replace(num2str(d_low,fmt),'.','_');
-    name = ['kp',kp_str,'d',d_str];
+    kp_str = replace(kp_str,'-','n');
+    name = ['kp',kp_str];
     eval(['B2 = B_lib.',name,'_B;']);
     eval(['H2 = H_lib.',name,'_H;']);
     
     %3 - low d
-    kp_str = replace(num2str(k_low,fmt),'.','_');
     d_str  = replace(num2str(d_low,fmt),'.','_');
-    name = ['kp',kp_str,'d',d_str];
+    name = ['d',d_str];
     eval(['A3 = A_lib.',name,'_A;']);
     %4 - up d
-    kp_str = replace(num2str(k_low,fmt),'.','_');
     d_str  = replace(num2str(d_up,fmt),'.','_');
-    name = ['kp',kp_str,'d',d_str];
+    name = ['d',d_str];
     eval(['A4 = A_lib.',name,'_A;']);
     
     

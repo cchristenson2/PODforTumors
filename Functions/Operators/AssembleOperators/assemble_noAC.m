@@ -15,8 +15,10 @@ Output:
 
 Contributors: Chase Christenson
 %}
-function [A,B,H] = assemble_noAC(n, D, kp, h, bcs)
-    A = assembleA(n, D, h, bcs);
+function [A,B,H] = assemble_noAC(N, D, kp, h, dz, bcs)
+    A = assembleA(N, D, h, dz, bcs);
+    
+    n = numel(N);
     B = assembleB(n, kp);
     H = assembleH(n, kp);
 end

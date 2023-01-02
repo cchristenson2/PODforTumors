@@ -1,6 +1,6 @@
 %{ 
 Forward model for the reaction diffusion equation with AC treatment in grid form
-dn/dt = D*d2n/dx2 + kN(1-N)
+dn/dt = D*d2n/h2 + kN(1-N)
 
 Input:
     - Cell map from start point
@@ -17,10 +17,7 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = RXDIF_2D(initial, kp, d, t, dt, bcs)
-    %FDM grid spacing
-    dx = 1;
-    dy = 1;
+function [N_sim, TC] = RXDIF_2D(initial, kp, d, t, h, dt, bcs)
     
     theta = 1; %If using volume fractions
 
@@ -44,26 +41,26 @@ function [N_sim, TC] = RXDIF_2D(initial, kp, d, t, dt, bcs)
 
                 %FDM in Y direction
                 if(boundary(1)==0)
-                    inv_y = d*(N(y+1,x)-2*N(y,x)+N(y-1,x))/(dy^2);
+                    inv_y = d*(N(y+1,x)-2*N(y,x)+N(y-1,x))/(h^2);
 
                 elseif(boundary(1)==1)
-                    inv_y = d*(-2*N(y,x)+2*N(y-1,x))/(dy^2);
+                    inv_y = d*(-2*N(y,x)+2*N(y-1,x))/(h^2);
 
                 elseif(boundary(1)==-1)
-                    inv_y = d*(-2*N(y,x)+2*N(y+1,x))/(dy^2);
+                    inv_y = d*(-2*N(y,x)+2*N(y+1,x))/(h^2);
                 else
                     inv_y = 0;
                 end
 
                 %FDM in X direction
                 if(boundary(2)==0)
-                    inv_x = d*(N(y,x+1)-2*N(y,x)+N(y,x-1))/(dx^2);
+                    inv_x = d*(N(y,x+1)-2*N(y,x)+N(y,x-1))/(h^2);
 
                 elseif(boundary(2)==1)
-                    inv_x = d*(-2*N(y,x)+2*N(y,x-1))/(dx^2);
+                    inv_x = d*(-2*N(y,x)+2*N(y,x-1))/(h^2);
 
                 elseif(boundary(2)==-1)
-                    inv_x = d*(-2*N(y,x)+2*N(y,x+1))/(dx^2);
+                    inv_x = d*(-2*N(y,x)+2*N(y,x+1))/(h^2);
                 else
                     inv_x = 0;
                 end

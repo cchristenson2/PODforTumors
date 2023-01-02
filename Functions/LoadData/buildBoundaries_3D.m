@@ -18,7 +18,7 @@ Contributors: Chase Christenson
 
 function [bcs] = buildBoundaries_3D(mask)
     [sy,sx,sz] = size(mask);
-    bcs = zeros(sy,sx,sz,2); %[y,x,z,[y type, x type, z type]]
+    bcs = zeros(sy,sx,sz,3); %[y,x,z,[y type, x type, z type]]
     for z = 1:sz
         for y = 1:sy
             for x = 1:sx

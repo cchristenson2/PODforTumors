@@ -20,8 +20,10 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [A,B,H,T1,T2] = assemble_wAC(n, D, kp, alpha1, alpha2, h, bcs)
-    A = assembleA(n, D, h, bcs);
+function [A,B,H,T1,T2] = assemble_wAC(N, D, kp, alpha1, alpha2, h, dz, bcs)
+    A = assembleA(N, D, h, dz, bcs);
+    
+    n = numel(N);
     B = assembleB(n, kp);
     H = assembleH(n, kp);
     T1 = assembleT(n, alpha1);

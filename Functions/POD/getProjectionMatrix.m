@@ -14,7 +14,7 @@ Outputs:
 Contributors: Chase Christenson
 %}
 
-function [V, U, S, V_] = getProjectionMatrix(N, k)
+function [V, k, V_, U, S] = getProjectionMatrix(N)
     [~,~,temp1,temp2] = size(N);
     if(temp2==1) %2D
         N_vert = zeros(numel(N(:,:,1)), temp1);
@@ -30,6 +30,12 @@ function [V, U, S, V_] = getProjectionMatrix(N, k)
 
     %Compute SVD of snapshot matrix
     [U,S,V_] = svd(N_vert);
+    
+    %Compute cummulative energy
+    sings = S(S>0);
+    cummulative_e = cumsum(sings);
+    max_e = max(cummulative_e);
+    k = numel(cummulative_e(cummulative_e < (max_e*0.995))) + 2;
 
     %Set projection basis
     V = U(:,1:k);

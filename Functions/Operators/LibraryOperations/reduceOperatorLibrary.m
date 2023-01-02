@@ -17,41 +17,51 @@ Contributors: Chase Christenson
 
 function [Ar_lib, Br_lib, Hr_lib, Tr_lib] = reduceOperatorLibrary(A_lib, B_lib, H_lib, T_lib, V, bounds, tx_params)
     fmt = bounds.fmt;
-    num = numel(bounds.kp_bounds);
+    num_kp = numel(bounds.kp_bounds);
+    num_d = numel(bounds.d_bounds);
     
     Ar_lib = struct;
     Br_lib = struct;
     Hr_lib = struct;
     Tr_lib = struct;
     
-    for i = 1:num
+    for i = 1:num_kp
         kp     = bounds.kp_bounds(i);
-        d      = bounds.d_bounds(i);
-        alpha  = bounds.alpha_bounds(i);
         kp_str    = replace(num2str(kp,fmt),'.','_');
-        d_str     = replace(num2str(d,fmt),'.','_');
-        alpha_str = replace(num2str(alpha,fmt),'.','_');
+        kp_str    = replace(kp_str,'-','n');
 
         %kp
         name = ['kp',kp_str];
-        eval(['B = B_lib.',name,'_B;']);
-        eval(['H = H_lib.',name,'_H;']);
-        eval(['Br_lib.',name,'_B = V''*B*V;']);
-        eval(['Hr_lib.',name,'_H = V''*H*kron(V,V);']);
+        
+%         eval(['disp(size(B_lib.',name,'_B));']);
+%         eval(['disp(size(H_lib.',name,'_H));']);
+        
+        
+        eval(['Br_lib.',name,'_B = V'' * B_lib.',name,'_B * V;']);
+        eval(['Hr_lib.',name,'_H = V'' * H_lib.',name,'_H * kron(V,V);']);
         eval(['clear ',name,';']);
         clear kp_str
-
+    end
+    
+    for i = 1:num_d
+        d      = bounds.d_bounds(i);
+        alpha  = bounds.alpha_bounds(i);
+        d_str     = replace(num2str(d,fmt),'.','_');
+        alpha_str = replace(num2str(alpha,fmt),'.','_');
+        
         %d
         name = ['d',d_str];
-        eval(['A = A_lib.',name,'_A;']);
-        eval(['Ar_lib.',name,'_A = V''*A*V;']);
+        
+%         eval(['disp(size(A_lib.',name,'_A));']);
+%         disp(size(V));
+        
+        eval(['Ar_lib.',name,'_A = V'' * A_lib.',name,'_A * V;']);
         eval(['clear ',name,';']);
         clear d_str
 
         %alpha
         name = ['alpha',alpha_str];
-        eval(['T = T_lib.',name,'_T;']);
-        eval(['Tr_lib.',name,'_T = V''*(T.*diag(tx_params.C(:)))*V;']); %Include patient specific concentration map before reducing
+        eval(['Tr_lib.',name,'_T = V''*(T_lib.',name,'_T.*diag(tx_params.C(:)))*V;']); %Include patient specific concentration map before reducing
         eval(['clear ',name,';']);
         clear alpha_str
     end

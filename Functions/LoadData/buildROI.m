@@ -27,14 +27,15 @@ function [ROI] = buildROI(tumor, ntp_cal)
         ROI(:,:) = BigROIswell;
         
     else %Tumor is 3D
+        sz = temp;
         for gg = 1:sz
-            BigROI(:,:,gg) = sum(N(:,:,gg,1:1+ntp_cal), 4);
-            BigROI(BigROI>0) = 1;
-            BigROI(isnan(BigROI)) = 0;
-            BigROIswell = imdilate(BigROI(:,:,gg), strel('disk',ceil(3*4/CF)));
+            temp = sum(N(:,:,gg,1:1+ntp_cal), 4);
+            temp(temp>0) = 1;
+            temp(isnan(temp)) = 0;
+            BigROIswell = imdilate(temp, strel('disk',ceil(3*4/tumor.CF)));
             BigROIswell = bwconvhull(BigROIswell);
 %             ROI(:,:,gg) = BigROIswell.*BW(:,:,gg);
-            ROI(:,:,gg) = BigROIswell(:,:,gg);
+            ROI(:,:,gg) = BigROIswell;
         end
     end
 end
