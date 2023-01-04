@@ -86,7 +86,9 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
     [V,k,V_full] = getProjectionMatrix(N_aug);
     
     %Reduce operator libraries
-    [Ar_lib,Br_lib,Hr_lib,Tr_lib] = reduceOperatorLibrary(A_lib, B_lib, H_lib, T_lib, V, bounds, tx_params);
+    Ar_lib = reduceALibrary(A_lib, V, bounds);
+    Tr_lib = reduceTLibrary(T_lib, V, bounds, tx_params);
+%     [Ar_lib,Br_lib,Hr_lib,Tr_lib] = reduceOperatorLibrary(A_lib, B_lib, H_lib, T_lib, V, bounds, tx_params);
     
     clear A_lib B_lib H_lib T_lib;
     
@@ -112,10 +114,12 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
     B_f = assembleB(numel(N0), kp_g(:));
     B_g = V'*B_f*V;
     
-    H_f = assembleH(numel(N0), kp_g(:));
-    H_g = V'*H_f*kron(V,V);
-    
-    kron_proj = kron(V,V);
+%     H_f = assembleH(numel(N0), kp_g(:));
+%     H_g = V'*H_f*kron(V,V);
+    H_g = zeros(k, k^2);
+    for i = 1:numel(kp_g(:))
+        H_g = H_g + V(i,:)*kp_g(i)*kron(V(i,:),V(i,:));
+    end
     
     %Initialize SSE
     [N_g_r, TC] = OperatorRXDIF_2D_wAC(N0_r, A_g, B_g, H_g, Ta_g, Tc_g, tx_params, t, dt);
