@@ -19,6 +19,7 @@ function [Ar_lib, Br_lib, Hr_lib, Tr_lib] = reduceOperatorLibrary(A_lib, B_lib, 
     fmt = bounds.fmt;
     num_kp = numel(bounds.kp_bounds);
     num_d = numel(bounds.d_bounds);
+    num_a = numel(bounds.alpha_bounds);
     
     Ar_lib = struct;
     Br_lib = struct;
@@ -45,20 +46,21 @@ function [Ar_lib, Br_lib, Hr_lib, Tr_lib] = reduceOperatorLibrary(A_lib, B_lib, 
     
     for i = 1:num_d
         d      = bounds.d_bounds(i);
-        alpha  = bounds.alpha_bounds(i);
         d_str     = replace(num2str(d,fmt),'.','_');
-        alpha_str = replace(num2str(alpha,fmt),'.','_');
-        
-        %d
         name = ['d',d_str];
-        
-%         eval(['disp(size(A_lib.',name,'_A));']);
-%         disp(size(V));
         
         eval(['Ar_lib.',name,'_A = V'' * A_lib.',name,'_A * V;']);
         eval(['clear ',name,';']);
         clear d_str
 
+        
+        
+    end
+    
+    for i = 1:num_a
+        alpha  = bounds.alpha_bounds(i);
+        alpha_str = replace(num2str(alpha,fmt),'.','_');
+        
         %alpha
         name = ['alpha',alpha_str];
         eval(['Tr_lib.',name,'_T = V''*(T_lib.',name,'_T.*diag(tx_params.C(:)))*V;']); %Include patient specific concentration map before reducing

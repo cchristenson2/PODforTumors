@@ -17,16 +17,13 @@ Contributors: Chase Christenson
 
 function [Ar_lib] = reduceALibrary(A_lib, V, bounds)
     fmt = bounds.fmt;
-    num_kp = numel(bounds.kp_bounds);
     num_d = numel(bounds.d_bounds);
     
     Ar_lib = struct;
     
     for i = 1:num_d
         d      = bounds.d_bounds(i);
-        alpha  = bounds.alpha_bounds(i);
         d_str     = replace(num2str(d,fmt),'.','_');
-        alpha_str = replace(num2str(alpha,fmt),'.','_');
         
         %d
         name = ['d',d_str];

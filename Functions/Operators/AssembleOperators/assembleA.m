@@ -13,34 +13,115 @@ Output:
 Contributors: Chase Christenson, Graham Pash
 %}
 function [A] = assembleA(N, d, h, dz, bcs)
-    L = assembleL(N, h, dz);
-    L = applyBC(L, bcs, h, dz);
-    L = d*L;
-    A = L;
+%     disp(size(d));
+    if(size(d,1) == 1)
+        d = d.*ones(numel(N),1);
+        scalar = 1;
+    else
+        d = d(:);
+        scalar = 0;
+    end
+    
+    L = assembleL(N, d, h, dz);
+    if(scalar == 0)
+        div = assembleDiv(N, d, h, dz, bcs);
+    else
+        div = 0;
+    end
+    
+    A = L+div;
+    
+    A = applyBC(A, bcs, h, dz, d);
+    
+%     A = L+div;
 end
 
-function [L] = assembleL(N, h, dz)
+%Build laplacian for d*lap(N)
+function [L] = assembleL(N, d, h, dz)
     [sy,sx,sz] = size(N);
     
     if(sz==1) %2D build
         n = sy*sx;
-        e = ones(n,1);
-        Y = spdiags([e -2*e e]./h, [-1 0 1],n,n);
-        X = spdiags([e -2*e e]./h, [-sy 0 sy],n,n);
+        e = d(:);
+        Y = spdiags([e -2*e e]./(h^2), [-1 0 1],n,n);
+        X = spdiags([e -2*e e]./(h^2), [-sy 0 sy],n,n);
         L = sparse(X+Y);
         
     else %3D build
         n = sy*sx*sz;
-        e = ones(n,1);
-        Y = spdiags([e -2*e e]./h, [-1 0 1],n,n);
-        X = spdiags([e -2*e e]./h, [-sy 0 sy],n,n);
-        Z = spdiags([e -2*e e]./dz, [-1*(sy*sx) 0 (sy*sx)],n,n);
+        e = d(:);
+        Y = spdiags([e -2*e e]./(h^2), [-1 0 1],n,n);
+        X = spdiags([e -2*e e]./(h^2), [-sy 0 sy],n,n);
+        Z = spdiags([e -2*e e]./(dz^2), [-1*(sy*sx) 0 (sy*sx)],n,n);
         L = sparse(X+Y+Z);
     end
-
 end
 
-function [L] = applyBC(L, bcs, h, dz)
+%Build divergence for div(d) * div(N) with boundaries included
+%Boundaries have to be built now since d is included in this operator
+function [div] = assembleDiv(N, d, h, dz, bcs)
+    [sy,sx,sz] = size(N);
+    
+    if(sz==1) %2D build
+        n = sy*sx;
+        div = zeros(n,n);
+        
+        for x = 1:sx
+            for y = 1:sy
+                i = y + (x-1)*sy;
+                % Y Direction
+                if(bcs(y,x,1)==0) %Only on interior nodes
+                    div(i,i+1) = (d(i+1)-d(i-1))/(4*(h^2));
+                    div(i,i-1) = (d(i-1)-d(i+1))/(4*(h^2));
+                end
+                % X Direction
+                if(bcs(y,x,2)==0) %Only on interior nodes
+                    div(i,i+sy) = (d(i+sy)-d(i-sy))/(4*(h^2));
+                    div(i,i-sy) = (d(i-sy)-d(i+sy))/(4*(h^2));
+                end
+            end
+        end
+        
+        div = sparse(div);
+        
+        
+    else %3D build
+        n = sy*sx*sz;
+        div = zeros(n,n);
+        
+        for z = 1:sz
+            for x = 1:sx
+                for y = 1:sy
+                    i = y + (x-1)*sy + (z-1)*sx*sy;
+                    
+                    % Y Direction
+                    if(bcs(y,x,z,1)==0) %Only on interior nodes
+                        div(i,i+1) = (d(i+1) - d(i-1))/(4*(h^2));
+                        div(i,i-1) = (d(i-1) - d(i+1))/(4*(h^2));
+                    end
+                    
+                    % X Direction
+                    if(bcs(y,x,z,2)==0) %Only on interior nodes
+                        div(i,i+sy) = (d(i+sy)-d(i-sy))/(4*(h^2));
+                        div(i,i-sy) = (d(i-sy)-d(i+sy))/(4*(h^2));
+                    end
+
+                    % Z Direction
+                    if(bcs(y,x,z,3)==0) %Only on interior nodes
+                        div(i,i+(sy*sx)) = (d(i+(sy*sx))-d(i-(sy*sx)))/(4*dz^2);
+                        div(i,i-(sy*sx)) = (d(i-(sy*sx))-d(i+(sy*sx)))/(4*dz^2);
+                    end
+                    
+                end
+            end
+        end
+        
+        div = sparse(div);
+    end
+end
+
+
+function [L] = applyBC(L, bcs, h, dz, d)
 % Apply Neumann BC discrete laplacian
     [sy,sx,sz,~] = size(bcs);
     n_3D = sy*sx*sz;
@@ -57,7 +138,7 @@ function [L] = applyBC(L, bcs, h, dz)
                 else
 
                     if(bcs(y,x,1)==-1) %Check if top wall
-                        L(i,i+1) = 2/h;
+                        L(i,i+1) = 2*d(i)/h;
                         if(i-1>=1)
                             L(i,i-1) = 0;
                         end
@@ -69,12 +150,12 @@ function [L] = applyBC(L, bcs, h, dz)
                     end
 
                     if(bcs(y,x,2)==-1) %Check if left wall
-                        L(i,i+sy) = 2/h;
+                        L(i,i+sy) = 2*d(i)/h;
                         if(i-sy>=1)
                             L(i,i-sy) = 0;
                         end
                     elseif(bcs(y,x,2)==1) %Check if right wall
-                        L(i,i-sy) = 2/h;
+                        L(i,i-sy) = 2*d(i)/h;
                         if(i+sy<=n_2D)
                             L(i,i+sy) = 0;
                         end
@@ -94,37 +175,37 @@ function [L] = applyBC(L, bcs, h, dz)
                         L(i,:) = 0;
                     else
                         if(bcs(y,x,z,1)==-1) %Check if top wall
-                            L(i,i+1) = 2/h;
+                            L(i,i+1) = 2*d(i)/h;
                             if(i-1>=1)
                                 L(i,i-1) = 0;
                             end
                         elseif(bcs(y,x,z,1)==1) %Check bottom wall
-                            L(i,i-1) = 2/h;
+                            L(i,i-1) = 2*d(i)/h;
                             if(i+1<=n_3D)
                                 L(i,i+1) = 0;
                             end
                         end
 
                         if(bcs(y,x,z,2)==-1) %Check if left wall
-                            L(i,i+sy) = 2/h;
+                            L(i,i+sy) = 2*d(i)/h;
                             if(i-sy>=1)
                                 L(i,i-sy) = 0;
                             end
                         elseif(bcs(y,x,z,2)==1) %Check if right wall
-                            L(i,i-sy) = 2/h;
+                            L(i,i-sy) = 2*d(i)/h;
                             if(i+sy<=n_3D)
                                 L(i,i+sy) = 0;
                             end
                         end
                         
                         if(bcs(y,x,z,3)==-1) %Check if under wall
-                            L(i,i+sy*sx) = 2/dz;
+                            L(i,i+sy*sx) = 2*d(i)/dz;
 %                             disp(size(L));
                             if(i-(sy*sx)>=1)
                                 L(i,i-(sy*sx)) = 0;
                             end
                         elseif(bcs(y,x,z,3)==1) %Check if above wall
-                            L(i,i-sy*sx) = 2/dz;
+                            L(i,i-sy*sx) = 2*d(i)/dz;
                             if(i+(sy*sx)<=n_3D)
                                 L(i,i+(sy*sx)) = 0;
                             end

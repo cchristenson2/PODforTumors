@@ -76,7 +76,7 @@ function [params, stats, outputs] = ROM_LMCalibration_GlobalKp_comb_2D(tumor, nt
     
     %% Prep for reduced order modeling
     %Determine projection matrix
-    V = getProjectionMatrix(cat(3,N0,N_true), k);
+    V = getProjectionMatrix(cat(3,N0,N_true));
     
     %Reduce operator libraries
     [Ar_lib,Br_lib,Hr_lib,Tr_lib] = reduceOperatorLibrary(A_lib, B_lib, H_lib, T_lib, V, bounds, tx_params);

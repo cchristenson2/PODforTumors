@@ -41,6 +41,7 @@ function [tumor] = loadPatientData_coarseRes(location)
     tumor.N = N;
     tumor.AUC = data.coarse_res_dat.AUC;
     tumor.Mask = data.coarse_res_dat.BreastMask;
+    tumor.Tissues = data.coarse_res_dat.Tissues;
     tumor.t_scan = t_scan;
     tumor.t_trx = t_trx;
     tumor.h = data.schedule_info.imagedims(1)*data.coarse_res_dat.CF;

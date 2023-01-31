@@ -23,7 +23,10 @@ function [N_aug,kp] = Augment_wTRX_comb_2D(N, t, h, dt, bcs, bounds, ntp_cal, tx
         kp(kp<bounds.kp_bounds(1)) = bounds.kp_bounds(1);
         kp(kp>bounds.kp_bounds(end)) = bounds.kp_bounds(end);
         kp(isnan(kp)) = 0;
-
+        if(i==1)
+            kp_out = kp;
+        end
+        
         %Diffusivity - estimation of change in radius over time (area of circle assumption)
         A1 = numel(N1(N1>thresh))*h^2;
         A2 = numel(N2(N2>thresh))*h^2;
@@ -32,7 +35,7 @@ function [N_aug,kp] = Augment_wTRX_comb_2D(N, t, h, dt, bcs, bounds, ntp_cal, tx
         alpha1 = (bounds.alpha_bounds(1) + bounds.alpha_bounds(end))/2;
 %         alpha2 = (bounds.alpha_bounds(1) + bounds.alpha_bounds(end))/2;
         
-        del_r = sqrt(A2/(4*pi)) - sqrt(A1/pi);
+        del_r = sqrt(A2/pi) - sqrt(A1/pi);
         d = del_r^2 / (4*(t2-t1));
 
         if(d<bounds.d_bounds(1))
@@ -73,4 +76,5 @@ function [N_aug,kp] = Augment_wTRX_comb_2D(N, t, h, dt, bcs, bounds, ntp_cal, tx
     if(ntp_cal == 2) % Add 3rd time point to end if needed
         N_aug = cat(3,N_aug, N(:,:,end)); 
     end
+    kp = kp_out;
 end

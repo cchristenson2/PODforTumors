@@ -14,7 +14,7 @@ Outputs:
 Contributors: Chase Christenson
 %}
 
-function [V, k, V_, U, S] = getProjectionMatrix(N)
+function [V, k, V_, U, S] = getProjectionMatrix(N,k)
     [~,~,temp1,temp2] = size(N);
     if(temp2==1) %2D
         N_vert = zeros(numel(N(:,:,1)), temp1);
@@ -35,7 +35,11 @@ function [V, k, V_, U, S] = getProjectionMatrix(N)
     sings = S(S>0);
     cummulative_e = cumsum(sings);
     max_e = max(cummulative_e);
-    k = numel(cummulative_e(cummulative_e < (max_e*0.995))) + 2;
+    if(k == 0)
+        k = numel(cummulative_e(cummulative_e < (max_e*0.995))) + 2;
+    else
+        k = k;
+    end
 
     %Set projection basis
     V = U(:,1:k);

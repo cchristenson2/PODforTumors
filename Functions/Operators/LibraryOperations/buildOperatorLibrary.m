@@ -26,6 +26,7 @@ function [A_lib, B_lib, H_lib, T_lib] = buildOperatorLibrary(bounds,N,h,fmt,bcs,
     
     len_d = numel(bounds.d_bounds);
     len_kp = numel(bounds.kp_bounds);
+    len_a = numel(bounds.alpha_bounds);
     
     n = numel(N);
     
@@ -35,7 +36,9 @@ function [A_lib, B_lib, H_lib, T_lib] = buildOperatorLibrary(bounds,N,h,fmt,bcs,
         d_str = replace(num2str(d,fmt),'.','_');
         name = ['d',d_str];
         eval(['A_lib.',name,'_A = assembleA(N, d, h, dz, bcs);']);
-
+    end
+    
+    for i = 1:len_a
         %Alpha based operators
         alpha = bounds.alpha_bounds(i);
         alpha_str = replace(num2str(alpha,fmt),'.','_');

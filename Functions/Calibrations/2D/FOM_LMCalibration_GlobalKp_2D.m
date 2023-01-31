@@ -152,33 +152,52 @@ function [params, stats, outputs] = FOM_LMCalibration_GlobalKp_2D(tumor, ntp_cal
         
         %Calculate update with current regularization
         residuals = reshape(N_true - N_sim, [], 1);
-        [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
+%         [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
+
+        g = J' * residuals;
+        H = (J'*J) + lambda*diag(diag(J'*J));
+
+        gsc = zeros(size(H,1),1);
+        Hsc = zeros(size(H,1),size(H,2));
+        for i1 = 1:size(H,1)
+            gsc(i1,1) = g(i1,1)/sqrt(H(i1,i1));
+            for i2 = 1:size(H,2)
+                Hsc(i1,i2) = H(i1,i2)/(sqrt(H(i1,i1))*sqrt(H(i2,i2))); 
+            end
+        end
+        [L, U] = lu(Hsc);
+        tempsc = L\gsc;
+        delsc  = U\tempsc;
+        update = zeros(size(delsc));
+        for i1 = 1:size(delsc,1)
+            update(i1,1) = delsc(i1,1)/sqrt(H(i1,i1));
+        end
         
         %Update parameters to test
         kp_test = (kp_g(idx_ROI(1)) + update(1)) * ones(size(N0));
         kp_test(~ROI) = 0;
         if(kp_test(idx_ROI(1))<kp_low)
-            kp_test(ROI) = kp_low;
+            kp_test(ROI) = kp_g(ROI) - (kp_g(ROI) - kp_low)./2;
         elseif(kp_test(idx_ROI(1))>kp_up)
-            kp_test(ROI) = kp_up;
+            kp_test(ROI) = kp_g(ROI) + (kp_up - kp_G(ROI))./2;
         end
         d_test  = d_g + update(2);
         if(d_test<d_low)
-            d_test = d_low;
+            d_test = d_g - (d_g - d_low)/2;
         elseif(d_test>d_up)
-            d_test = d_up;
+            d_test = d_g + (d_up - d_g)/2;
         end
         alpha1_test  = alpha1_g + update(3);
         if(alpha1_test<alpha_low)
-            alpha1_test = alpha_low;
+            alpha1_test = alpha1_g - (alpha1_g - alpha_low)/2;
         elseif(alpha1_test>alpha_up)
-            alpha1_test = alpha_up;
+            alpha1_test = alpha1_g + (alpha_up - alpha1_g)/2;
         end
         alpha2_test  = alpha2_g + update(4);
         if(alpha2_test<alpha_low)
-            alpha2_test = alpha_low;
+            alpha2_test = alpha2_g - (alpha2_g - alpha_low)/2;
         elseif(alpha2_test>alpha_up)
-            alpha2_test = alpha_up;
+            alpha2_test = alpha2_g + (alpha_up - alpha2_g)/2;
         end
         
         if(norm == 1)

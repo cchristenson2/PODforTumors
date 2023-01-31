@@ -21,7 +21,7 @@ function [N_sim, TC] = RXDIF_2D(initial, kp, d, t, h, dt, bcs)
     
     theta = 1; %If using volume fractions
 
-    t_ = (t/dt) + 1; %Indices of densities to output
+    t_ = (t./dt) + 1; %Indices of densities to output
     
     %Intialize solution matrix
     [sy,sx] = size(initial);
@@ -41,7 +41,8 @@ function [N_sim, TC] = RXDIF_2D(initial, kp, d, t, h, dt, bcs)
 
                 %FDM in Y direction
                 if(boundary(1)==0)
-                    inv_y = d*(N(y+1,x)-2*N(y,x)+N(y-1,x))/(h^2);
+                    lap_y = d*(N(y+1,x)-2*N(y,x)+N(y-1,x))/(h^2);
+                    inv_y = lap_y;
 
                 elseif(boundary(1)==1)
                     inv_y = d*(-2*N(y,x)+2*N(y-1,x))/(h^2);
@@ -54,7 +55,8 @@ function [N_sim, TC] = RXDIF_2D(initial, kp, d, t, h, dt, bcs)
 
                 %FDM in X direction
                 if(boundary(2)==0)
-                    inv_x = d*(N(y,x+1)-2*N(y,x)+N(y,x-1))/(h^2);
+                    lap_x = d*(N(y,x+1)-2*N(y,x)+N(y,x-1))/(h^2);
+                    inv_x = lap_x;
 
                 elseif(boundary(2)==1)
                     inv_x = d*(-2*N(y,x)+2*N(y,x-1))/(h^2);

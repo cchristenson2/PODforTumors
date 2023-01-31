@@ -62,22 +62,29 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_comb_3D(tumor
     d_low  = bounds.d_bounds(1);
     alpha_up  = bounds.alpha_bounds(end);
     alpha_low = bounds.alpha_bounds(1);
+    
+    %Augment patient data and build kp
+    [~, kp_aug] = Augment_wTRX_comb_3D(cat(4,N0,N_true), tumor.t_scan(2:end), h, dz, 1, bcs, bounds, ntp_cal, tx_params);
+    
+    %Augmented kp for initial guess
+    kp_g = kp_aug;
+    kp_g(~ROI) = 0;
 
 %     kp_g       = (exp(log(kp_low) + (log(kp_up)-log(kp_low)) * rand(1,1))) * ones(size(N0));
-    kp_g       = kp_low * 5 * ones(size(N0));
-    kp_g(~ROI) = 0;
+%     kp_g       = kp_low * 5 * ones(size(N0));
+%     kp_g(~ROI) = 0;
 %     d_g        = exp(log(d_low) + (log(d_up)-log(d_low)) * rand(1,1));
 %     alpha1_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
 %     alpha2_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
     d_g      = d_low * 5;
-    alpha1_g = alpha_low * 5;
-%     alpha2_g = alpha_low * 5;
+    alpha1_g = alpha_up/2;
+%     alpha2_g = alpha_up/2;
     
     num_kp = numel(idx_ROI);
     num_p  = num_kp + 2;
     
     %Initialize SSE
-    [N_sim, TC] = RXDIF_3D_wAC_comb(N0, kp_g, d_g, alpha1_g, tx_params, t, dz, h, dt, bcs);
+    [N_sim, TC] = RXDIF_3D_wAC_comb(N0, kp_g, d_g, alpha1_g, tx_params, t, h, dz, dt, bcs);
     SSE   = sum((N_true - N_sim).^2,'all');
     
     if(isempty(gcp('nocreate')))
@@ -128,8 +135,8 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_comb_3D(tumor
 %             alpha2_p = alpha2_g*delta;
 %             dif_alpha2 = alpha2_p - alpha2_g;
 
-            N_d      = RXDIF_3D_wAC_comb(N0, kp_g, d_p, alpha1_g,tx_params, t, h, dt, bcs);
-            N_alpha1 = RXDIF_3D_wAC_comb(N0, kp_g, d_g, alpha1_p,tx_params, t, h, dt, bcs);
+            N_d      = RXDIF_3D_wAC_comb(N0, kp_g, d_p, alpha1_g,tx_params, t, h, dz, dt, bcs);
+            N_alpha1 = RXDIF_3D_wAC_comb(N0, kp_g, d_g, alpha1_p,tx_params, t, h, dz, dt, bcs);
 %             N_alpha2 = RXDIF_2D_wAC(N0, kp_g, d_g, alpha1_g, alpha2_p, tx_params, t, h, dt, bcs);
             
             J(:,num_kp+1) = reshape(N_d - N_sim, [], 1)/dif_d;

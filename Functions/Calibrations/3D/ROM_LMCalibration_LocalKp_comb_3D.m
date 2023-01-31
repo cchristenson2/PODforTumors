@@ -65,7 +65,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_3D
     alpha_low = bounds.alpha_bounds(1);
     
     %Augment patient data and build kp
-    [N_aug] = Augment_wTRX_comb_3D(cat(4,N0,N_true), tumor.t_scan(2:end), h, dz, 1, bcs, bounds, ntp_cal, tx_params);
+    [N_aug, kp_aug] = Augment_wTRX_comb_3D(cat(4,N0,N_true), tumor.t_scan(2:end), h, dz, 1, bcs, bounds, ntp_cal, tx_params);
 
 %     kp_g       = (exp(log(kp_low) + (log(kp_up)-log(kp_low)) * rand(1,1))) * ones(size(N0));
 %     kp_g       = kp_low * 5 * ones(size(N0));
@@ -74,9 +74,10 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_3D
 %     alpha1_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
 %     alpha2_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
     d_g      = d_low * 5;
-    alpha1_g = alpha_low * 5;
-    alpha2_g = alpha_low * 5;
-    
+%     alpha1_g = alpha_low * 5;
+%     alpha2_g = alpha_low * 5;
+    alpha1_g = alpha_up/2;
+    alpha2_g = alpha_up/2;
     
     
     %% Prep for reduced order modeling
@@ -102,8 +103,13 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_3D
 %     kp_gr = V' * kp_g(:);
 %     kp_g  = V * kp_gr;
 
-    kp_gr = 0.01.*ones(k,1);
-    kp_g = V * kp_gr;
+%     kp_gr = 0.01.*ones(k,1);
+%     kp_g = V * kp_gr;
+    
+    %Augmented results for initial guess
+    kp_g = kp_aug;
+    kp_gr = V' * kp_g(:);
+
     kp_g0 = kp_g;
     
     %Initialize Operators
@@ -117,7 +123,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_3D
 %     H_g = V'*H_f*kron(V,V);
     H_g = zeros(k, k^2);
     for i = 1:numel(kp_g(:))
-        H_g = H_g + V(i,:)*kp_g(i)*kron(V(i,:),V(i,:));
+        H_g = H_g + V(i,:)'*kp_g(i)*kron(V(i,:),V(i,:));
     end
     
     %Initialize SSE
@@ -324,8 +330,10 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_3D
         B_fr = assembleB(numel(N0), kp_g(:));
         B_r = V'*B_fr*V;
 
-        H_fr = assembleH(numel(N0), kp_g(:));
-        H_r = V'*H_fr*kron(V,V);
+        H_r = zeros(k, k^2);
+        for i = 1:numel(kp_g(:))
+            H_r = H_r + V(i,:)'*kp_g(i)*kron(V(i,:),V(i,:));
+        end
         
         N_pred_r = OperatorRXDIF_2D_wAC_comb(N0_r, A_r, B_r, H_r, Ta_r, tx_params, tumor.t_scan(end), dt);
         N_pred_r_reshape = reshape(V*N_pred_r, size(N0));

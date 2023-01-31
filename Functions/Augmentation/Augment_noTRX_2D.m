@@ -1,5 +1,5 @@
 function [N_aug,kp] = Augment_noTRX_2D(N, t, h, dt, bcs, bounds, ntp_cal)
-    thresh = 0.15;
+    thresh = 0.01;
 
     [sy,sx,~] = size(N);
     N_aug = zeros(sy,sx,t(end)/dt+1);
@@ -19,16 +19,28 @@ function [N_aug,kp] = Augment_noTRX_2D(N, t, h, dt, bcs, bounds, ntp_cal)
         t2 = t(i);
     
         %Proliferation - estimation of change in cells based on logisitc growth equation
-        kp = -1*log(N2./N1)./(t2-t1);
-        kp(kp<bounds.kp_bounds(1)) = bounds.kp_bounds(1);
-        kp(kp>bounds.kp_bounds(end)) = bounds.kp_bounds(end);
-        kp(isnan(kp)) = 0;
+        kp = 1*log(N2./N1)./(t2-t1); kp(isnan(kp)) = 0; kp(isinf(kp)) = 0;
+        idx = find(kp);
+        kp_change = normalize(kp(idx), 'range', [bounds.kp_bounds(1), bounds.kp_bounds(end)]);
+        kp = zeros(size(kp));
+        kp(idx) = kp_change;
+
+%         kp(kp<bounds.kp_bounds(1)) = bounds.kp_bounds(1);
+%         kp(kp>bounds.kp_bounds(end)) = bounds.kp_bounds(end);
+%         kp(isnan(kp)) = 0;
+
+%         figure
+%         imagesc(kp);
+        
+        if(i==1)
+            kp_out = kp;
+        end
 
         %Diffusivity - estimation of change in radius over time (area of circle assumption)
         A1 = numel(N1(N1>thresh))*h^2;
         A2 = numel(N2(N2>thresh))*h^2;
         
-        del_r = sqrt(A2/(4*pi)) - sqrt(A1/pi);
+        del_r = sqrt(A2/(pi)) - sqrt(A1/pi);
         d = del_r^2 / (4*(t2-t1));
 
         if(d<bounds.d_bounds(1))
@@ -36,6 +48,8 @@ function [N_aug,kp] = Augment_noTRX_2D(N, t, h, dt, bcs, bounds, ntp_cal)
         elseif(d>bounds.d_bounds(end))
             d = bounds.d_bounds(end);
         end
+        
+%         d = d.*ones(size(N(:,:,1)));
         
         
         
@@ -69,4 +83,5 @@ function [N_aug,kp] = Augment_noTRX_2D(N, t, h, dt, bcs, bounds, ntp_cal)
     if(ntp_cal == 2) % Add 3rd time point to end if needed
         N_aug = cat(3,N_aug, N(:,:,end)); 
     end
+    kp = kp_out;
 end

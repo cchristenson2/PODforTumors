@@ -118,7 +118,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_noTRX_3
 %     H_g = V'*H_f*kron(V,V);
     H_g = zeros(k, k^2);
     for i = 1:numel(kp_g(:))
-        H_g = H_g + V(i,:)*kp_g(i)*kron(V(i,:),V(i,:));
+        H_g = H_g + V(i,:)'*kp_g(i)*kron(V(i,:),V(i,:));
     end
 
     %Initialize SSE
@@ -325,8 +325,10 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_noTRX_3
         B_fr = assembleB(numel(N0), kp_g(:));
         B_r = V'*B_fr*V;
 
-        H_fr = assembleH(numel(N0), kp_g(:));
-        H_r = V'*H_fr*kron(V,V);
+        H_r = zeros(k, k^2);
+        for i = 1:numel(kp_g(:))
+            H_r = H_r + V(i,:)'*kp_g(i)*kron(V(i,:),V(i,:));
+        end
         
         N_pred_r = OperatorRXDIF_2D(N0_r, A_r, B_r, H_r, tumor.t_scan(end), dt);
         N_pred_r_reshape = reshape(V*N_pred_r, size(N0));

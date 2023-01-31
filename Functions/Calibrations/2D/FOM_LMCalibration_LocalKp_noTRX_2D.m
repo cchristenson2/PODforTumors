@@ -25,16 +25,20 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_noTRX_2D(tumo
     
     %% Prep for calibration
     %LM parameters
-    e_tol    = 1e-5;    %Calibration SSE goal
-    e_conv   = 1e-7;    %Minimum change in SSE for an iteration
-    max_it   = 500;     %Maximum iterations
+    e_tol    = 1e-6;    %Calibration SSE goal
+    e_conv   = 1e-6;    %Minimum change in SSE for an iteration
+    max_it   = 1000;     %Maximum iterations
     delta    = 1.001;   %Perturbation magnitude
+    delta_d  = 1.1;
     pass     = 7;       %Lambda reduction factor for successful updates
     fail     = 9;       %Lambda increase factor for unsuccessful updates
-    lambda   = 1;       %Starting lambda
-    j_change = 1;       %Build J when equal to J frequency
-    j_freq   = 1;       %How many successful updates before updating J
+    lambda   = 1e5;       %Starting lambda
+    j_freq   = 10;       %How many successful updates before updating J
+    j_change = j_freq;       %Build J when equal to J frequency
     thresh   = 0.15;
+    mu       = 0;    %Regularization term for global parameters
+    
+    stuck_check = 0;
     
     %Pull out struct variables
     N0 = tumor.N(:,:,1);
@@ -55,29 +59,36 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_noTRX_2D(tumo
     h = tumor.h;
     
     %Pull out parameter bounds and set initial guesses
-    kp_up  = bounds.kp_bounds(end);
-    kp_low = bounds.kp_bounds(1);
-    d_up   = bounds.d_bounds(end);
-    d_low  = bounds.d_bounds(1);
-%     alpha_up  = bounds.alpha_bounds(end);
-%     alpha_low = bounds.alpha_bounds(1);
+    kp_up  = bounds.kp_bounds(end) / (delta^2);
+    kp_low = bounds.kp_bounds(1) * (delta*2);
+    d_up   = bounds.d_bounds(end) / (delta_d^2);
+    d_low  = bounds.d_bounds(1) * (delta_d*2);
+    alpha_up  = bounds.alpha_bounds(end) / (delta^2);
+    alpha_low = bounds.alpha_bounds(1) * (delta*2);
+    
+    d_target = 5e-4;
+    alpha1_target = 0.5;
+    alpha2_target = 0.5;
+    
+    %Augment patient data and build kp
+    [N_aug,kp_aug] = Augment_noTRX_2D(cat(3,N0,N_true), tumor.t_scan(2:end), h, 1, bcs, bounds, ntp_cal);
 
 %     kp_g       = (exp(log(kp_low) + (log(kp_up)-log(kp_low)) * rand(1,1))) * ones(size(N0));
-    kp_g       = 5e-3 * ones(size(N0));
+    kp_g       = kp_low * 5 * ones(size(N0));
+%     kp_g = kp_aug; kp_g(kp_g(ROI)==0) = kp_low*5;
     kp_g(~ROI) = 0;
+    
 %     d_g        = exp(log(d_low) + (log(d_up)-log(d_low)) * rand(1,1));
-%     alpha1_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
-%     alpha2_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
-    d_g      = d_low * 5;
-%     alpha1_g = alpha_low * 5;
-%     alpha2_g = alpha_low * 5;
+%     d_g      = d_low * 5;
+    d_g = d_up/2;
     
     num_kp = numel(idx_ROI);
     num_p  = num_kp + 1;
     
     %Initialize SSE
     [N_sim, TC] = RXDIF_2D(N0, kp_g, d_g, t, h, dt, bcs);
-    SSE   = sum((N_true - N_sim).^2,'all');
+    reg = (d_g - d_target)^2;
+    SSE   = sum((N_true - N_sim).^2,'all') + mu*reg;
     
     if(isempty(gcp('nocreate')))
         myCluster = parcluster('Processes');
@@ -145,35 +156,36 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_noTRX_2D(tumo
         
         %Update parameters to test
         kp_new = kp_g(idx_ROI) + update(1:num_kp);
-        kp_new(kp_new<kp_low) = kp_low;
-        kp_new(kp_new>kp_up)  = kp_up;
+        kp_new(kp_new<kp_low) = kp_g(idx_ROI(kp_new<kp_low)) - ((kp_g(idx_ROI(kp_new<kp_low)) - kp_low)./2);
+        kp_new(kp_new>kp_up)  = kp_g(idx_ROI(kp_new>kp_up)) + ((kp_up - kp_g(idx_ROI(kp_new>kp_up)))./2);
         kp_test = zeros(size(kp_g));
         kp_test(idx_ROI) = kp_new;
 
         d_test  = d_g + update(num_kp+1);
         if(d_test<d_low)
-            d_test = d_low;
+            d_test = d_g - (d_g - d_low)/2;
         elseif(d_test>d_up)
-            d_test = d_up;
+            d_test = d_g + (d_up - d_g)/2;
         end
         
 %         alpha1_test  = alpha1_g + update(num_kp+2);
 %         if(alpha1_test<alpha_low)
-%             alpha1_test = alpha_low;
+%             alpha1_test = alpha1_g - (alpha1_g - alpha_low)/2;
 %         elseif(alpha1_test>alpha_up)
-%             alpha1_test = alpha_up;
+%             alpha1_test = alpha1_g + (alpha_up - alpha1_g)/2;
 %         end
 %         
 %         alpha2_test  = alpha2_g + update(num_kp+3);
 %         if(alpha2_test<alpha_low)
-%             alpha2_test = alpha_low;
+%             alpha2_test = alpha2_g - (alpha2_g - alpha_low)/2;
 %         elseif(alpha2_test>alpha_up)
-%             alpha2_test = alpha_up;
+%             alpha2_test = alpha2_g + (alpha_up - alpha2_g)/2;
 %         end
         
         %Test SSE calculation
         [N_test, TC_test] = RXDIF_2D(N0, kp_test, d_test, t, h, dt, bcs);
-        SSE_test = sum((N_true - N_test).^2,'all');
+        reg = (d_test - d_target)^2;
+        SSE_test = sum((N_true - N_test).^2,'all') + mu*reg;
         
         %Evaluate new error
         if(SSE_test<SSE) %Successful updates
@@ -200,8 +212,21 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_noTRX_2D(tumo
             lambda = lambda/pass;
             j_change = j_change+1;
             J_out = J;
+            
+            stuck_check = 0;
+            
         else
             lambda = lambda*fail;
+            if(lambda>1e20)
+                lambda = 1e-20;
+                j_change = j_freq;
+                if(stuck_check == 1)
+                    disp(['ROM algorithm stuck on iteration: ',num2str(iteration)]);
+                    break;
+                else
+                    stuck_check = 1;
+                end
+            end
         end
         iteration = iteration + 1;
         

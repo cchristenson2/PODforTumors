@@ -17,15 +17,13 @@ Contributors: Chase Christenson
 
 function [Tr_lib] = reduceTLibrary(T_lib, V, bounds, tx_params)
     fmt = bounds.fmt;
-    num_kp = numel(bounds.kp_bounds);
-    num_d = numel(bounds.d_bounds);
+    num_a = numel(bounds.alpha_bounds);
 
     Tr_lib = struct;
     
-    for i = 1:num_d
+    for i = 1:num_a
         d      = bounds.d_bounds(i);
         alpha  = bounds.alpha_bounds(i);
-        d_str     = replace(num2str(d,fmt),'.','_');
         alpha_str = replace(num2str(alpha,fmt),'.','_');
 
         %alpha
