@@ -17,10 +17,11 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = RXDIF_2D_wMC(initial, kp, d0, t, h, dt, bcs, M, E, nu, matX, matY, freq)
+function [N_sim, TC] = RXDIF_2D_wMC(initial, kp, d0, t, h, dt, bcs, M, E, nu, matX, matY)
     
     theta = 1; %If using volume fractions
-
+    freq = 25;
+    
     t_ = (t./dt) + 1; %Indices of densities to output
     
     %Intialize solution matrix

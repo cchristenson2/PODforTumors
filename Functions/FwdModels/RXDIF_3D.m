@@ -17,7 +17,7 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = RXDIF_3D(initial, kp, d, t, h, dt, bcs)
+function [N_sim, TC] = RXDIF_3D(initial, kp, d, t, h, dz, dt, bcs)
     
     theta = 1; %If using volume fractions
 
@@ -68,13 +68,13 @@ function [N_sim, TC] = RXDIF_3D(initial, kp, d, t, h, dt, bcs)
                     
                     %FDM in Z direction
                     if(boundary(3)==0)
-                        inv_z = d*(N(y,x,z+1)-2*N(y,x,z)+N(y,x,z-1))/(h^2);
+                        inv_z = d*(N(y,x,z+1)-2*N(y,x,z)+N(y,x,z-1))/(dz^2);
 
                     elseif(boundary(3)==1)
-                        inv_z = d*(-2*N(y,x,z)+2*N(y,x,z-1))/(h^2);
+                        inv_z = d*(-2*N(y,x,z)+2*N(y,x,z-1))/(dz^2);
 
                     elseif(boundary(3)==-1)
-                        inv_z = d*(-2*N(y,x,z)+2*N(y,x,z+1))/(h^2);
+                        inv_z = d*(-2*N(y,x,z)+2*N(y,x,z+1))/(dz^2);
                     else
                         inv_z = 0;
                     end

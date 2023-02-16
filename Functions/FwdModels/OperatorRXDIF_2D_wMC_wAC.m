@@ -20,22 +20,19 @@ Output:
     - Cell map at desired times
     - Full cell map time course
 
-Contributors: Chase Christenson, Graham Pash
+Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, A1, d, B, H, T1, T2, tx_params, t, dt, M, E, nu, matX, matY)
+function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, A, d, B, H, T1, T2, tx_params, t, dt, M, E, nu, matX, matY, matX_r, matY_r, matXY, V, Vs, reduced, bcs, h, dz)
+
+    freq = 25;
+
     nt = t(end)/dt + 1;
     t_ind = t./dt + 1;
+    
     nt_trx = tx_params.txduration./dt; %Indices of treatment times
     trx_on = 0; %Starts off, turns on at first treatment delivery
     trx_cnt = 1;
-    
-    freq = 25;
-    
-%     [sy,sx,sz,n] = size(bcs);
-%     if(n==1)
-%         sz = 1;
-%     end
     
     [num,~] = size(N0);
     N = zeros(num, nt);
@@ -44,12 +41,21 @@ function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, A1, d, B, H, T1, T2, tx_para
     b1 = tx_params.beta1;
     b2 = tx_params.beta2;
     
+    
     % Initialize damped diffusivity
-    damper = get_damper(matX, matY, N(:,1), M, E, nu);
-    S = damper(:);
+    if(reduced==0)
+        damper = get_damper(matX, matY, N0, M, E, nu);
+        S = damper(:);
+    else
+        N_full = V*N0(:);
+        grad_N = Vs' * (matXY * [N_full(:); N_full(:)]);
+        damper = get_damper_reduced(matX, matY, grad_N, M, E, nu, Vs);
+        S = damper(:);
+        temp_A = assembleA(bcs(:,:,1), d.*S, h, dz, bcs);
+        A = V' * temp_A * V;
+    end
     
     for k = 2:nt
-        %Get time since last treatment
         %Get time since last treatment
         if(k-1>nt_trx(trx_cnt))
             if(trx_on==0)
@@ -73,15 +79,32 @@ function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, A1, d, B, H, T1, T2, tx_para
             treat = 0;
         end
         
-        X_dot = (matX * N(:,k-1)) .* (matX * (d.*S));
-        Y_dot = (matY * N(:,k-1)) .* (matY * (d.*S));
-        N(:,k) = N(:,k-1) + dt*(S.*(A1*N(:,k-1)) + (X_dot + Y_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)) - treat);
+        if(reduced==0)
+            X_dot = (matX * N(:,k-1)) .* (matX * (d.*S));
+            Y_dot = (matY * N(:,k-1)) .* (matY * (d.*S));
+            N(:,k) = N(:,k-1) + dt*(S.*(A*N(:,k-1)) + (X_dot + Y_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)) - treat);
+        else
+            X_dot = (matX_r * N(:,k-1)) .* (matX_r * (V'*(d.*S)));
+            Y_dot = (matY_r * N(:,k-1)) .* (matY_r * (V'*(d.*S)));
+            N(:,k) = N(:,k-1) + dt*(A*N(:,k-1) + (X_dot + Y_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)) - treat);
+        end
+        
         
         if mod(k, freq) == 0
-            damper = get_damper(matX, matY, N(:,k), M, E, nu);
-            S = damper(:);
+            if(reduced==0)
+                damper = get_damper(matX, matY, N(:,k), M, E, nu);
+                S = damper(:);
+            else
+                N_full = V*N(:,k);
+                grad_N = Vs' * (matXY * [N_full(:); N_full(:)]);
+                damper = get_damper_reduced(matX, matY, grad_N, M, E, nu, Vs);
+                S = damper(:);
+                A = V' * assembleA(bcs(:,:,1), d.*S, h, dz, bcs) * V;
+            end
         end
+        
     end
+    
     TC = squeeze(sum(N,1));
     N_sim = N(:,t_ind);
 end

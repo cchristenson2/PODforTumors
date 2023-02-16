@@ -1,4 +1,4 @@
-function N_aug = Augment_noTRX_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal)
+function [N_aug,kp] = Augment_noTRX_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal)
     thresh = 0.15;
     
     [sy,sx,sz,~] = size(N);
@@ -19,10 +19,12 @@ function N_aug = Augment_noTRX_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal)
         t2 = t(i);
     
         %Proliferation - estimation of change in cells based on logisitc growth equation
-        kp = -1*log(N2./N1)./(t2-t1);
-        kp(kp<bounds.kp_bounds(1)) = bounds.kp_bounds(1);
-        kp(kp>bounds.kp_bounds(end)) = bounds.kp_bounds(end);
-        kp(isnan(kp)) = 0;
+        kp = -1*log(N2./N1)./(t2-t1); kp(isnan(kp)) = 0; kp(isinf(kp)) = 0;
+        
+        idx = find(kp);
+        kp_change = normalize(kp(idx), 'range', [bounds.kp_bounds(1), bounds.kp_bounds(end)]);
+        kp = zeros(size(kp));
+        kp(idx) = kp_change;
         
         %Diffusivity - estimation of change in radius over time (area of circle assumption)
         V1 = numel(N1(N1>thresh))*h^2*dz;
@@ -35,6 +37,10 @@ function N_aug = Augment_noTRX_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal)
             d = bounds.d_bounds(1);
         elseif(d>bounds.d_bounds(end))
             d = bounds.d_bounds(end);
+        end
+        
+        if(i==1)
+            kp_out = kp;
         end
         
         
@@ -51,7 +57,7 @@ function N_aug = Augment_noTRX_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal)
                     t_out = [t(1)+dt:dt:t(2)]-t(1);
                     t_idx = (t_out + t(1))./dt + 1;
                 end
-                N_aug(:,:,:,t_idx) = RXDIF_3D(initial, kp, d, t_out, h, dt, bcs);
+                N_aug(:,:,:,t_idx) = RXDIF_3D(initial, kp, d, t_out, h, dz, dt, bcs);
             end
         else % three time point calibration, run twice, once eith each kp map
             if(i==1)
@@ -63,12 +69,12 @@ function N_aug = Augment_noTRX_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal)
                 t_out = [t(1)+dt:dt:t(2)]-t(1);
                 t_idx = (t_out + t(1))./dt + 1;
             end
-            N_aug(:,:,:,t_idx) = RXDIF_3D(initial, kp, d, t_out, h, dt, bcs);
+            N_aug(:,:,:,t_idx) = RXDIF_3D(initial, kp, d, t_out, h, dz, dt, bcs);
         end
     end
     if(ntp_cal == 2) % Add 3rd time point to end if needed
         N_aug = cat(4,N_aug, N(:,:,:,end)); 
     end
     
-    
+    kp = kp_out;
 end

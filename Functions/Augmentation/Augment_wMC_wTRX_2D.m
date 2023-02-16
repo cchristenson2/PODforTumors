@@ -41,10 +41,8 @@ function [N_aug,kp] = Augment_wMC_wTRX_2D(N, t, h, dt, bcs, bounds, ntp_cal, tx_
             d = bounds.d_bounds(end);
         end
         
-        if(i == 1);
-            kp_avg = kp;
-        else
-            kp_avg = kp_avg + kp;
+        if(i==1)
+            kp_out = kp;
         end
         
         
@@ -80,5 +78,5 @@ function [N_aug,kp] = Augment_wMC_wTRX_2D(N, t, h, dt, bcs, bounds, ntp_cal, tx_
         N_aug = cat(3,N_aug, N(:,:,end)); 
     end
     
-    kp = kp_avg/ntp_cal;
+    kp = kp_out;
 end

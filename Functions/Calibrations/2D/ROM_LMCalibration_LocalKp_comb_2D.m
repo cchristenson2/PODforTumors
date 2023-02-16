@@ -22,21 +22,25 @@ Contributors: Chase Christenson
 
 function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_2D(tumor, ntp_cal, ntp_pred, bounds, k, A_lib, B_lib, H_lib, T_lib, dt)
 %     addpath(genpath('C:/ROM/'))
+
+    temp = [];
     
     %% Prep for calibration
     %LM parameters
     e_tol    = 1e-6;    %Calibration SSE goal
-    e_conv   = 1e-6;    %Minimum change in SSE for an iteration
+    e_conv   = 1e-10;    %Minimum change in SSE for an iteration
     max_it   = 1000;     %Maximum iterations
     delta    = 1.001;   %Perturbation magnitude
-    delta_d  = 1.01;    %Delta perturb magnitude
+    delta_d  = 1.1;    %Delta perturb magnitude
     pass     = 7;       %Lambda reduction factor for successful updates
     fail     = 9;       %Lambda increase factor for unsuccessful updates
-    lambda   = 1e5;       %Starting lambda
-    j_freq   = 5;       %How many successful updates before updating J
+    lambda   = 1;       %Starting lambda
+    j_freq   = 10;       %How many successful updates before updating J
     j_change = j_freq;       %Build J when equal to J frequency
     thresh   = 0.15;
-    mu       = 1e0;    %Regularization term for global parameters
+    mu       = 0;    %Regularization term for global parameters
+    
+    stuck_check = 0;
     
     %Pull out struct variables
     N0 = tumor.N(:,:,1);
@@ -58,18 +62,18 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_2D
 
     %Pull out parameter bounds and set initial guesses
     kp_up  = bounds.kp_bounds(end) / (delta^2);
-    kp_low = bounds.kp_bounds(1) * (delta*2);
+    kp_low = bounds.kp_bounds(1) * (delta^2);
     d_up   = bounds.d_bounds(end) / (delta_d^2);
-    d_low  = bounds.d_bounds(1) * (delta_d*2);
+    d_low  = bounds.d_bounds(1) * (delta_d^2);
     alpha_up  = bounds.alpha_bounds(end) / (delta^2);
-    alpha_low = bounds.alpha_bounds(1) * (delta*2);
+    alpha_low = bounds.alpha_bounds(1) * (delta^2);
     
     d_target = 5e-4;
     alpha1_target = 0.5;
     alpha2_target = 0.5;
     
     %Augment patient data and build kp
-    [N_aug,kp_aug] = Augment_wTRX_comb_2D(cat(3,N0,N_true), tumor.t_scan(2:end), h, 1, bcs, bounds, ntp_cal, tx_params);
+    [N_aug,kp_aug] = Augment_wTRX_comb_2D(cat(3,N0,N_true), tumor.t_scan(2:end), h, dt, bcs, bounds, ntp_cal, tx_params);
 
 %     kp_g       = (exp(log(kp_low) + (log(kp_up)-log(kp_low)) * rand(1,1))) * ones(size(N0));
 %     kp_g       = kp_low * 5 * ones(size(N0));
@@ -111,8 +115,8 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_2D
     A_g = OperatorInterp_A(d_g, bounds, Ar_lib);
     [Ta_g,~] = OperatorInterp_T(alpha1_g, alpha2_g, bounds, Tr_lib);
     
-    B_f = assembleB(numel(N0), kp_g(:));
-    H_f = assembleH(numel(N0), kp_g(:));
+%     B_f = assembleB(numel(N0), kp_g(:));
+%     H_f = assembleH(numel(N0), kp_g(:));
     
     B_g = zeros(k,k);
     H_g = zeros(k,k^2);
@@ -237,6 +241,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_2D
 %         end
         
         alpha2_test = alpha2_g;
+        
         %Run forward_check
         A_test = OperatorInterp_A(d_test, bounds, Ar_lib);
         [Ta_test,~] = OperatorInterp_T(alpha1_test, alpha2_test, bounds, Tr_lib);
@@ -291,7 +296,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_2D
             j_change = j_change+1;
             
             %Temp variables for testing validation
-            [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
+%             [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
             
             temp.updates = update;
             temp.lambda = lambda;
@@ -300,10 +305,19 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_comb_2D
             temp.N_g_r = N_g_r;
             temp.J = J;
             
+            stuck_check = 0;
+            
         else
             lambda = lambda*fail;
             if(lambda>1e20)
                 lambda = 1e-20;
+                j_change = j_freq;
+                if(stuck_check == 1)
+                    disp(['ROM algorithm stuck on iteration: ',num2str(iteration)]);
+                    break;
+                else
+                    stuck_check = 1;
+                end
             end
         end
         iteration = iteration+1; 

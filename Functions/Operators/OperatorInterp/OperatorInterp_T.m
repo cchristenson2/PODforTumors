@@ -17,7 +17,7 @@ function [Ta, Tc] = OperatorInterp_T(alpha1,alpha2,bounds,T_lib)
     
     %Get closest alpha_a
     alpha1_low = alpha_vec(1); alpha1_up = alpha_vec(2);
-    for i = 3:length(alpha_vec)-1
+    for i = 2:length(alpha_vec)-1
          if(alpha1>=alpha_vec(i))
              alpha1_low = alpha_vec(i);
              alpha1_up = alpha_vec(i+1);
@@ -27,7 +27,7 @@ function [Ta, Tc] = OperatorInterp_T(alpha1,alpha2,bounds,T_lib)
     end
     %Get closest alpha_c
     alpha2_low = alpha_vec(1); alpha2_up = alpha_vec(2);
-    for i = 3:length(alpha_vec)-1
+    for i = 2:length(alpha_vec)-1
          if(alpha2>=alpha_vec(i))
              alpha2_low = alpha_vec(i);
              alpha2_up = alpha_vec(i+1);

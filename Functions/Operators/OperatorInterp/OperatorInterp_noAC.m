@@ -20,7 +20,7 @@ function [A,B,H] = OperatorInterp_noAC(k,d,bounds,A_lib,B_lib,H_lib)
     
     %Get closest k/d pairs in library
     k_low = kp_vec(1); k_up = kp_vec(2);
-    for i = 3:length(kp_vec)-1
+    for i = 2:length(kp_vec)-1
          if(k>=kp_vec(i))
              k_low = kp_vec(i);
              k_up = kp_vec(i+1);
@@ -29,7 +29,7 @@ function [A,B,H] = OperatorInterp_noAC(k,d,bounds,A_lib,B_lib,H_lib)
          end
     end
     d_low = d_vec(1); d_up = d_vec(2);
-    for i = 3:length(d_vec)-1
+    for i = 2:length(d_vec)-1
          if(d>=d_vec(i))
              d_low = d_vec(i);
              d_up = d_vec(i+1);

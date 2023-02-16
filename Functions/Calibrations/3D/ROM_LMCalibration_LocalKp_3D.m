@@ -25,17 +25,19 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
     
     %% Prep for calibration
     %LM parameters
-    e_tol    = 1e-5;    %Calibration SSE goal
-    e_conv   = 1e-7;    %Minimum change in SSE for an iteration
-    max_it   = 500;     %Maximum iterations
+    e_tol    = 1e-6;    %Calibration SSE goal
+    e_conv   = 1e-10;    %Minimum change in SSE for an iteration
+    max_it   = 1000;     %Maximum iterations
     delta    = 1.001;   %Perturbation magnitude
-    delta_kp = 1.001;
+    delta_d  = 1.01;    %Delta perturb magnitude
     pass     = 7;       %Lambda reduction factor for successful updates
     fail     = 9;       %Lambda increase factor for unsuccessful updates
     lambda   = 1;       %Starting lambda
-    j_change = 1;       %Build J when equal to J frequency
-    j_freq   = 1;       %How many successful updates before updating J
+    j_freq   = 10;       %How many successful updates before updating J
+    j_change = j_freq;       %Build J when equal to J frequency
     thresh   = 0.15;
+    mu       = 0;    %Regularization term for global parameters
+    stuck_check = 0;
     
     %Pull out struct variables
     N0 = tumor.N(:,:,:,1);
@@ -57,38 +59,45 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
     
 
     %Pull out parameter bounds and set initial guesses
-    kp_up  = bounds.kp_bounds(end);
-    kp_low = bounds.kp_bounds(1);
-    d_up   = bounds.d_bounds(end);
-    d_low  = bounds.d_bounds(1);
-    alpha_up  = bounds.alpha_bounds(end);
-    alpha_low = bounds.alpha_bounds(1);
+    kp_up  = bounds.kp_bounds(end) / (delta^2);
+    kp_low = bounds.kp_bounds(1) * (delta^2);
+    d_up   = bounds.d_bounds(end) / (delta_d^2);
+    d_low  = bounds.d_bounds(1) * (delta_d^2);
+    alpha_up  = bounds.alpha_bounds(end) / (delta^2);
+    alpha_low = bounds.alpha_bounds(1) * (delta^2);
+    
+    start = tic;
     
     %Augment patient data and build kp
-    [N_aug] = Augment_wTRX_3D(cat(4,N0,N_true), tumor.t_scan(2:end), h, dz, 1, bcs, bounds, ntp_cal, tx_params);
+    [N_aug, kp_aug] = Augment_wTRX_3D(cat(4,N0,N_true), tumor.t_scan(2:end), h, dz, dt, bcs, bounds, ntp_cal, tx_params);
 
 %     kp_g       = (exp(log(kp_low) + (log(kp_up)-log(kp_low)) * rand(1,1))) * ones(size(N0));
 %     kp_g       = kp_low * 5 * ones(size(N0));
 %     kp_g(~ROI) = 0;
+
 %     d_g        = exp(log(d_low) + (log(d_up)-log(d_low)) * rand(1,1));
-%     alpha1_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
-%     alpha2_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
-    d_g      = d_low * 5;
+    d_g      = d_up/5;
+    
 %     alpha1_g = alpha_low * 5;
 %     alpha2_g = alpha_low * 5;
-    alpha1_g = 0.1; alpha2_g = 0.1;
+%     alpha1_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
+%     alpha2_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
+    alpha1_g = alpha_up/2;
+    alpha2_g = alpha_up/2;
     
     
     
     %% Prep for reduced order modeling
     %Determine projection matrix
 %     V = getProjectionMatrix(cat(3,N0,N_true), k);
-    [V,k,V_full] = getProjectionMatrix(N_aug);
+    [V,k,V_full] = getProjectionMatrix(N_aug, 0);
     
     %Reduce operator libraries
     Ar_lib = reduceALibrary(A_lib, V, bounds);
     Tr_lib = reduceTLibrary(T_lib, V, bounds, tx_params);
 %     [Ar_lib,Br_lib,Hr_lib,Tr_lib] = reduceOperatorLibrary(A_lib, B_lib, H_lib, T_lib, V, bounds, tx_params);
+
+    outputs.extra_offline_time = toc(start);
     
     clear A_lib B_lib H_lib T_lib;
     
@@ -100,24 +109,20 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
     end
     
     %Reduce kp_g and unreduce to start
-%     kp_gr = V' * kp_g(:);
-%     kp_g  = V * kp_gr;
-
-    kp_gr = 0.01.*ones(k,1);
-    kp_g = V * kp_gr;
-    kp_g0 = kp_g;
+    kp_g = kp_aug(:);
+    kp_gr = V' * kp_g;
     
     %Initialize Operators
     A_g = OperatorInterp_A(d_g, bounds, Ar_lib);
     [Ta_g,Tc_g] = OperatorInterp_T(alpha1_g, alpha2_g, bounds, Tr_lib);
     
-    B_f = assembleB(numel(N0), kp_g(:));
-    B_g = V'*B_f*V;
+%     B_f = assembleB(numel(N0), kp_g(:));
+%     B_g = V'*B_f*V;
     
-%     H_f = assembleH(numel(N0), kp_g(:));
-%     H_g = V'*H_f*kron(V,V);
-    H_g = zeros(k, k^2);
-    for i = 1:numel(kp_g(:))
+    B_g = zeros(k,k);
+    H_g = zeros(k,k^2);
+    for i = 1:numel(N0)
+        B_g = B_g + V(i,:)'*kp_g(i)*V(i,:);
         H_g = H_g + V(i,:)'*kp_g(i)*kron(V(i,:),V(i,:));
     end
     
@@ -157,7 +162,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
 %             start = tic;
             parfor(i = 1:num_kp)
                 kp_pr = kp_gr;
-                kp_pr(i) = kp_pr(i)*delta_kp;
+                kp_pr(i) = kp_pr(i)*delta;
                 dif_kp = kp_pr(i) - kp_gr(i);
                 
                 kp_p = V * kp_pr;
@@ -184,7 +189,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
 %             end
 
             %Perturb d in reduced space
-            d_p = d_g.*delta;
+            d_p = d_g.*delta_d;
             dif = d_p - d_g;
             A_t = OperatorInterp_A(d_p, bounds, Ar_lib);
             N_d = OperatorRXDIF_2D_wAC(N0_r, A_t, B_g, H_g, Ta_g, Tc_g, tx_params, t, dt);
@@ -212,27 +217,29 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
 
         %Update parameters
         kp_test_r = kp_gr + update(1:num_kp);
-        kp_test = V*kp_test_r;
-        kp_test(kp_test<kp_low) = kp_low;
-        kp_test(kp_test>kp_up)  = kp_up;
+        kp_new = V*kp_test_r; kp_new = kp_new(idx_ROI);
+        kp_new(kp_new<kp_low) = kp_g(idx_ROI(kp_new<kp_low)) - ((kp_g(idx_ROI(kp_new<kp_low)) - kp_low)./2);
+        kp_new(kp_new>kp_up)  = kp_g(idx_ROI(kp_new>kp_up)) + ((kp_up - kp_g(idx_ROI(kp_new>kp_up)))./2);
+        kp_test = zeros(size(kp_g)); kp_test(idx_ROI) = kp_new;
+        kp_test_r = V' * kp_test;
         
         d_test = d_g + update(num_kp+1);
         if(d_test<d_low)
-            d_test = d_low;
+            d_test = d_g - (d_g - d_low)/2;
         elseif(d_test>d_up)
-            d_test = d_up;
+            d_test = d_g + (d_up - d_g)/2;
         end
         alpha1_test = alpha1_g + update(num_kp+2);
         if(alpha1_test<alpha_low)
-            alpha1_test = alpha_low;
+            alpha1_test = alpha1_g - (alpha1_g - alpha_low)/2;
         elseif(alpha1_test>alpha_up)
-            alpha1_test = alpha_up;
+            alpha1_test = alpha1_g + (alpha_up - alpha1_g)/2;
         end
         alpha2_test = alpha2_g + update(num_kp+3);
         if(alpha2_test<alpha_low)
-            alpha2_test = alpha_low;
+            alpha2_test = alpha2_g - (alpha2_g - alpha_low)/2;
         elseif(alpha2_test>alpha_up)
-            alpha2_test = alpha_up;
+            alpha2_test = alpha2_g + (alpha_up - alpha2_g)/2;
         end
 
         %Run forward_check
@@ -286,7 +293,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
             j_change = j_change+1;
             
             %Temp variables for testing validation
-            [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
+%             [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
             
             temp.updates = update;
             temp.lambda = lambda;
@@ -295,8 +302,20 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_3D(tumo
             temp.N_g_r = N_g_r;
             temp.J = J;
             
+            stuck_check = 0;
+            
         else
             lambda = lambda*fail;
+            if(lambda>1e20)
+                lambda = 1e-20;
+                j_change = j_freq;
+                if(stuck_check == 1)
+                    disp(['ROM algorithm stuck on iteration: ',num2str(iteration)]);
+                    break;
+                else
+                    stuck_check = 1;
+                end
+            end
         end
         iteration = iteration+1; 
         

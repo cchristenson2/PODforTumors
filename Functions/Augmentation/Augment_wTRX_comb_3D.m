@@ -1,4 +1,4 @@
-function N_aug = Augment_wTRX_comb_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal, tx_params)
+function [N_aug,kp] = Augment_wTRX_comb_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal, tx_params)
     thresh = 0.15;
 
     [sy,sx,sz,~] = size(N);
@@ -19,10 +19,12 @@ function N_aug = Augment_wTRX_comb_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal, tx_
         t2 = t(i);
     
         %Proliferation - estimation of change in cells based on logisitc growth equation
-        kp = -1*log(N2./N1)./(t2-t1);
-        kp(kp<bounds.kp_bounds(1)) = bounds.kp_bounds(1);
-        kp(kp>bounds.kp_bounds(end)) = bounds.kp_bounds(end);
-        kp(isnan(kp)) = 0;
+        kp = -1*log(N2./N1)./(t2-t1); kp(isnan(kp)) = 0; kp(isinf(kp)) = 0;
+        
+        idx = find(kp);
+        kp_change = normalize(kp(idx), 'range', [bounds.kp_bounds(1), bounds.kp_bounds(end)]);
+        kp = zeros(size(kp));
+        kp(idx) = kp_change;
         
         %Diffusivity - estimation of change in radius over time (area of circle assumption)
         V1 = numel(N1(N1>thresh))*h^2*dz;
@@ -40,6 +42,9 @@ function N_aug = Augment_wTRX_comb_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal, tx_
             d = bounds.d_bounds(end);
         end
         
+        if(i==1)
+            kp_out = kp;
+        end
         
         
     %% Run forward eval
@@ -73,5 +78,5 @@ function N_aug = Augment_wTRX_comb_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal, tx_
         N_aug = cat(4,N_aug, N(:,:,:,end)); 
     end
     
-    
+    kp = kp_out;
 end

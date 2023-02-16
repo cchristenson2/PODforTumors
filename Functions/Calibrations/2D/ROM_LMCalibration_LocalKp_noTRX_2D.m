@@ -26,13 +26,13 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_noTRX_2
     %% Prep for calibration
     %LM parameters
     e_tol    = 1e-6;    %Calibration SSE goal
-    e_conv   = 1e-6;    %Minimum change in SSE for an iteration
+    e_conv   = 1e-10;    %Minimum change in SSE for an iteration
     max_it   = 1000;     %Maximum iterations
     delta    = 1.001;   %Perturbation magnitude
     delta_d  = 1.1;    %Delta perturb magnitude
     pass     = 7;       %Lambda reduction factor for successful updates
     fail     = 9;       %Lambda increase factor for unsuccessful updates
-    lambda   = 1e5;       %Starting lambda
+    lambda   = 1;       %Starting lambda
     j_freq   = 10;       %How many successful updates before updating J
     j_change = j_freq;       %Build J when equal to J frequency
     thresh   = 0.15;
@@ -60,11 +60,11 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_noTRX_2
 
     %Pull out parameter bounds and set initial guesses
     kp_up  = bounds.kp_bounds(end) / (delta^2);
-    kp_low = bounds.kp_bounds(1) * (delta*2);
+    kp_low = bounds.kp_bounds(1) * (delta^2);
     d_up   = bounds.d_bounds(end) / (delta_d^2);
-    d_low  = bounds.d_bounds(1) * (delta_d*2);
+    d_low  = bounds.d_bounds(1) * (delta_d^2);
     alpha_up  = bounds.alpha_bounds(end) / (delta^2);
-    alpha_low = bounds.alpha_bounds(1) * (delta*2);
+    alpha_low = bounds.alpha_bounds(1) * (delta^2);
     
     d_target = 5e-4;
     alpha1_target = 0.5;
@@ -74,9 +74,9 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_noTRX_2
     [N_aug,kp_aug] = Augment_noTRX_2D(cat(3,N0,N_true), tumor.t_scan(2:end), h, dt, bcs, bounds, ntp_cal);
     
 %     kp_g       = (exp(log(kp_low) + (log(kp_up)-log(kp_low)) * rand(1,1))) * ones(size(N0));
-%     kp_g       = kp_low*5 .* ones(size(N0));
-%     kp_g(~ROI) = 0;
-%     kp_g = kp_g(:);
+    kp_g       = kp_up/2 .* ones(size(N0));
+    kp_g(~ROI) = 0;
+    kp_g = kp_g(:);
    
 %     d_g        = exp(log(d_low) + (log(d_up)-log(d_low)) * rand(1,1));
     d_g      = d_up/5;
@@ -103,7 +103,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_noTRX_2
     end
     
     %Reduce kp_g and unreduce to start
-    kp_g = kp_aug(:);
+%     kp_g = kp_aug(:);
     kp_gr = V' * kp_g(:);
     
     %Initialize Operators
@@ -307,7 +307,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_noTRX_2
             j_change = j_change+1;
             
             %Temp variables for testing validation
-            [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
+%             [update,flags] = bicgstab((J'*J + lambda*diag(diag(J'*J))),(J'*residuals),1e-8,100);
             
             temp.updates = update;
             temp.lambda = lambda;

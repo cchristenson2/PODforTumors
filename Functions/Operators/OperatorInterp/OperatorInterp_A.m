@@ -16,7 +16,7 @@ function [A] = OperatorInterp_A(d,bounds,A_lib)
     fmt       = bounds.fmt;
     
     d_low = d_vec(1); d_up = d_vec(2);
-    for i = 3:length(d_vec)-1
+    for i = 2:length(d_vec)-1
          if(d>=d_vec(i))
              d_low = d_vec(i);
              d_up = d_vec(i+1);
@@ -44,5 +44,5 @@ function [A] = OperatorInterp_A(d,bounds,A_lib)
     eval(['A2 = A_lib.',name,'_A;']);
     
     %Interp changing d, low k; 3-4
-    A = d_low_ratio.*A1 + d_up_ratio.*A1;
+    A = d_low_ratio.*A1 + d_up_ratio.*A2;
 end

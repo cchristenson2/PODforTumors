@@ -23,7 +23,7 @@ function [A,B,H,Ta,Tc] = OperatorInterp_wAC(k,d,alpha1,alpha2,bounds,A_lib,B_lib
     
     %Get closest k
     k_low = kp_vec(1); k_up = kp_vec(2);
-    for i = 3:length(kp_vec)-1
+    for i = 2:length(kp_vec)-1
          if(k>=kp_vec(i))
              k_low = kp_vec(i);
              k_up = kp_vec(i+1);
@@ -33,7 +33,7 @@ function [A,B,H,Ta,Tc] = OperatorInterp_wAC(k,d,alpha1,alpha2,bounds,A_lib,B_lib
     end
     %Get closest d
     d_low = d_vec(1); d_up = d_vec(2);
-    for i = 3:length(d_vec)-1
+    for i = 2:length(d_vec)-1
          if(d>=d_vec(i))
              d_low = d_vec(i);
              d_up = d_vec(i+1);
@@ -43,7 +43,7 @@ function [A,B,H,Ta,Tc] = OperatorInterp_wAC(k,d,alpha1,alpha2,bounds,A_lib,B_lib
     end
     %Get closest alpha_a
     alpha1_low = alpha_vec(1); alpha1_up = alpha_vec(2);
-    for i = 3:length(alpha_vec)-1
+    for i = 2:length(alpha_vec)-1
          if(alpha1>=alpha_vec(i))
              alpha1_low = alpha_vec(i);
              alpha1_up = alpha_vec(i+1);
@@ -53,7 +53,7 @@ function [A,B,H,Ta,Tc] = OperatorInterp_wAC(k,d,alpha1,alpha2,bounds,A_lib,B_lib
     end
     %Get closest alpha_c
     alpha2_low = alpha_vec(1); alpha2_up = alpha_vec(2);
-    for i = 3:length(alpha_vec)-1
+    for i = 2:length(alpha_vec)-1
          if(alpha2>=alpha_vec(i))
              alpha2_low = alpha_vec(i);
              alpha2_up = alpha_vec(i+1);

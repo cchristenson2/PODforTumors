@@ -25,9 +25,9 @@ E_tumor = 10*2e3;
 % E(tissue == 2) = E_fibro;
 % E(tissue == 0) = E_tumor;
 
-E = ones(size(tissue));
-
 % E = imgaussfilt(E,2);
+
+E = ones(size(tissue)).*E_adipose;
 
 E(bcs(:,:,:,1) ==2 ) = 0;
 
@@ -65,23 +65,22 @@ for z = 1:sz
     end
 end
 
+y_jump = sy*sx*sz;
+z_jump = 2*sy*sx*sz;
+
 % set up mult factors for BCs
 for z = 1:sz
     for y = 1:sy
         for x = 1:sx
             count = itm(y,x,z);
-            county = itm(y,x,z)+sy*sx*sz;
-            countz = itm(y,x,z)+(sy*sx*sz*2);
-            
-            uy_jump = sy*sx*sz;
-            uz_jump = sy*sx*sz*2;
-            
+            county = itm(y,x,z)+y_jump;
+            countz = itm(y,x,z)+z_jump;
             %Ke = Ke_mat(y,x);
             % ARE WE IN THE BREAST
             if bcs(y,x,z,2) == 2
-                M(count,count) = 0; % forces 0 displacement
-                M(county,county) = 0; % forces 0 displacement
-                M(countz,countz) = 0; % forces 0 displacement
+                M(count,count) = 1; % forces 0 displacement
+                M(county,county) = 1; % forces 0 displacement
+                M(countz,countz) = 1; % forces 0 displacement
                 continue
             end
 
@@ -106,25 +105,25 @@ for z = 1:sz
                 if bcs(y,x,z,1) == -1 % y == 1
                     % TERM MULT BY K2
                     % dG/dx * dUy/dy  +  G * d^2Uy/(dx*dy)
-                    M(count,itm(y+1,x,z)+uy_jump) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h^2);
+                    M(count,itm(y+1,x,z)+(y_jump)) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h^2);
 
-                    M(count,itm(y,x,z)+uy_jump) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h^2);
+                    M(count,itm(y,x,z)+(y_jump)) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h^2);
 
 
-                    M(count,itm(y+1,x+1,z)+uy_jump) = k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y+1,x+1,z)+(y_jump)) = k2 * G(y,x,z) / (2*h^2);
 
-                    M(count,itm(y+1,x-1,z)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y+1,x-1,z)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h^2);
 
-                    M(count,itm(y,x+1,z)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y,x+1,z)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h^2);
 
-                    M(count,itm(y,x-1,z)+uy_jump) = k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y,x-1,z)+(y_jump)) = k2 * G(y,x,z) / (2*h^2);
                     
                     
                     % TERM MULT BY 2
                     % dG/dy * dUx/dy  +  G * d^2Ux/dy^2
-                    M(count,itm(y,x,z))   = M(count,itm(y,x,z)) + 2 * (G(y+1,x,z)-G(y,x,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(count,itm(y,x,z))   = M(count,itm(y,x,z)) + 2 * (G(y+1,x,z)-G(y,x,z))/(h^2) + 2 * G(y,x,z)/(h^2);
                     
-                    M(count,itm(y+1,x,z)) = 2 * (G(y,x,z)-G(y+1,x,z))/(4*h^2) - 4 * G(y,x,z)/(h^2);
+                    M(count,itm(y+1,x,z)) = 2 * (G(y,x,z)-G(y+1,x,z))/(h^2) - 4 * G(y,x,z)/(h^2);
 
                     M(count,itm(y+2,x,z)) =  2 * G(y,x,z)/(h^2);
                     
@@ -132,43 +131,43 @@ for z = 1:sz
                 elseif bcs(y,x,z,1) == 1 % y == sy
                     % TERM MULT BY K2
                     % dG/dx * dUy/dy  +  G * d^2Uy/(dx*dy)
-                    M(count,itm(y,x,z)+uy_jump) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h^2);
+                    M(count,itm(y,x,z)+(y_jump)) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h^2);
 
-                    M(count,itm(y-1,x,z)+uy_jump) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h^2);
+                    M(count,itm(y-1,x,z)+(y_jump)) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h^2);
 
 
-                    M(count,itm(y,x+1,z)+uy_jump) = k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y,x+1,z)+(y_jump)) = k2 * G(y,x,z) / (2*h^2);
 
-                    M(count,itm(y,x-1,z)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y,x-1,z)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h^2);
 
-                    M(count,itm(y-1,x+1,z)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y-1,x+1,z)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h^2);
 
-                    M(count,itm(y-1,x-1,z)+uy_jump) = k2 * G(y,x,z) / (2*h^2);
+                    M(count,itm(y-1,x-1,z)+(y_jump)) = k2 * G(y,x,z) / (2*h^2);
                     
                     
                     % TERM MULT BY 2
                     % dG/dy * dUx/dy  +  G * d^2Ux/dy^2
-                    M(count,itm(y,x,z))   = M(count,itm(y,x,z)) + 2 * (G(y,x,z)-G(y-1,x,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(count,itm(y,x,z))   = M(count,itm(y,x,z)) + 2 * (G(y,x,z)-G(y-1,x,z))/(h^2) + 2 * G(y,x,z)/(h^2);
 
-                    M(count,itm(y-1,x,z)) = 2 * (G(y-1,x,z)-G(y,x,z))/(4*h^2) - 4 * G(y,x,z)/(h^2);
+                    M(count,itm(y-1,x,z)) = 2 * (G(y-1,x,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/(h^2);
                     
                     M(count,itm(y-2,x,z)) = 2 * G(y,x,z)/(h^2);
                     
                 else % y is on interior -- COMPLETE
                     % TERM MULT BY K2
                     % dG/dx * dUy/dy  +  G * d^2Uy/(dx*dy)
-                    M(count,itm(y+1,x,z)+uy_jump) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h^2);
+                    M(count,itm(y+1,x,z)+(y_jump)) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h^2);
 
-                    M(count,itm(y-1,x,z)+uy_jump) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h^2);
+                    M(count,itm(y-1,x,z)+(y_jump)) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h^2);
 
 
-                    M(count,itm(y+1,x+1,z)+uy_jump) = k2 * G(y,x,z) / (4*h^2);
+                    M(count,itm(y+1,x+1,z)+(y_jump)) = k2 * G(y,x,z) / (4*h^2);
 
-                    M(count,itm(y+1,x-1,z)+uy_jump) = -1 * k2 * G(y,x,z) / (4*h^2);
+                    M(count,itm(y+1,x-1,z)+(y_jump)) = -1 * k2 * G(y,x,z) / (4*h^2);
 
-                    M(count,itm(y-1,x+1,z)+uy_jump) = -1 * k2 * G(y,x,z) / (4*h^2);
+                    M(count,itm(y-1,x+1,z)+(y_jump)) = -1 * k2 * G(y,x,z) / (4*h^2);
 
-                    M(count,itm(y-1,x-1,z)+uy_jump) = k2 * G(y,x,z) / (4*h^2);
+                    M(count,itm(y-1,x-1,z)+(y_jump)) = k2 * G(y,x,z) / (4*h^2);
                     
                     % TERM MULT BY 2
                     % dG/dy * dUx/dy  +  G * d^2Ux/dy^2
@@ -185,18 +184,18 @@ for z = 1:sz
                 if bcs(y,x,z,3) == -1 %z == 1
                     % TERM MULT BY K2
                     % dG/dx * dUz/dz  +  G * d^2Uz/(dx*dz)
-                    M(count,itm(y,x,z+1)+uz_jump) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h*dz);
+                    M(count,itm(y,x,z+1)+(z_jump)) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h*dz);
 
-                    M(count,itm(y,x,z)+uz_jump) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h*dz);
+                    M(count,itm(y,x,z)+(z_jump)) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h*dz);
 
 
-                    M(count,itm(y,x+1,z+1)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x+1,z+1)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
 
-                    M(count,itm(y,x-1,z+1)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x-1,z+1)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(count,itm(y,x+1,z)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x+1,z)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(count,itm(y,x-1,z)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x-1,z)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
                     
                     % TERM MULT BY 2
                     % dG/dz * dUx/dz  +  G * d^2Ux/dz^2
@@ -210,18 +209,18 @@ for z = 1:sz
                 elseif bcs(y,x,z,3) == 1 %z == sz 
                     % TERM MULT BY K2
                     % dG/dx * dUz/dz  +  G * d^2Uz/(dx*dz)
-                    M(count,itm(y,x,z)+uz_jump) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h*dz);
+                    M(count,itm(y,x,z)+(z_jump)) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(2*h*dz);
 
-                    M(count,itm(y,x,z-1)+uz_jump) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h*dz);
+                    M(count,itm(y,x,z-1)+(z_jump)) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(2*h*dz);
 
 
-                    M(count,itm(y,x+1,z)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x+1,z)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
 
-                    M(count,itm(y,x-1,z)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x-1,z)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(count,itm(y,x+1,z-1)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x+1,z-1)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(count,itm(y,x-1,z-1)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(count,itm(y,x-1,z-1)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
                     
                     
                     % TERM MULT BY 2
@@ -235,18 +234,18 @@ for z = 1:sz
                 else %z is on interior -- COMPLETE
                     % TERM MULT BY K2
                     % dG/dx * dUz/dz  +  G * d^2Uz/(dx*dz)
-                    M(count,itm(y,x,z+1)+uz_jump) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h*dz);
+                    M(count,itm(y,x,z+1)+(z_jump)) = k2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h*dz);
 
-                    M(count,itm(y,x,z-1)+uz_jump) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h*dz);
+                    M(count,itm(y,x,z-1)+(z_jump)) = k2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h*dz);
 
 
-                    M(count,itm(y,x+1,z+1)+uz_jump) = k2 * G(y,x,z) / (4*h*dz);
+                    M(count,itm(y,x+1,z+1)+(z_jump)) = k2 * G(y,x,z) / (4*h*dz);
 
-                    M(count,itm(y,x-1,z+1)+uz_jump) = -1 * k2 * G(y,x,z) / (4*h*dz);
+                    M(count,itm(y,x-1,z+1)+(z_jump)) = -1 * k2 * G(y,x,z) / (4*h*dz);
 
-                    M(count,itm(y,x+1,z-1)+uz_jump) = -1 * k2 * G(y,x,z) / (4*h*dz);
+                    M(count,itm(y,x+1,z-1)+(z_jump)) = -1 * k2 * G(y,x,z) / (4*h*dz);
 
-                    M(count,itm(y,x-1,z-1)+uz_jump) = k2 * G(y,x,z) / (4*h*dz);
+                    M(count,itm(y,x-1,z-1)+(z_jump)) = k2 * G(y,x,z) / (4*h*dz);
                     
                     
                     % TERM MULT BY 2
@@ -262,17 +261,17 @@ for z = 1:sz
 
 
             % Y DIRECTION -- COMPLETE
-            if bcs(y,x,z,1) == 1 || bcs(y,x,z,1) == -1% y == 1 || y == sy
+            if bcs(y,x,z,1) == 1 || bcs(y,x,z,1) == -1 % y == 1 || y == sy
                 M(county,county) = 1;
             else
                 % Y ONLY DERIVATIVES -- COMPLETE
                 % TERM MULT BY K1
                 % dG/dy * dUy/dy  +  G * d^2Uy/dy^2
-                M(county,itm(y+1,x,z)+uy_jump) = k1 * (G(y+1,x,z)-G(y-1,x,z))/(4*h^2) + k1 * G(y,x,z)/h^2;
+                M(county,itm(y+1,x,z)+(y_jump)) = k1 * (G(y+1,x,z)-G(y-1,x,z))/(4*h^2) + k1 * G(y,x,z)/h^2;
 
-                M(county,itm(y,x,z)+uy_jump)   = -2 * k1 * G(y,x,z)/h^2;
+                M(county,itm(y,x,z)+(y_jump))   = -2 * k1 * G(y,x,z)/h^2;
 
-                M(county,itm(y-1,x,z)+uy_jump) = k1 * (G(y-1,x,z)-G(y+1,x,z))/(4*h^2) + k1 * G(y,x,z)/h^2;
+                M(county,itm(y-1,x,z)+(y_jump)) = k1 * (G(y-1,x,z)-G(y+1,x,z))/(4*h^2) + k1 * G(y,x,z)/h^2;
                 
                 % X & Y DERIVATIVES -- COMPLETE
                 % We are on left boundary (x-1 does not exist)
@@ -294,11 +293,11 @@ for z = 1:sz
                     
                     % TERM MULT BY 2
                     % dG/dx * dUy/dx  +  G * d^2Uy/dx^2
-                    M(county,itm(y,x,z)+uy_jump)   = M(county,itm(y,x,z)+uy_jump) + 2 * (G(y,x,z)-G(y,x+1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x,z)+(y_jump))   = M(county,itm(y,x,z)+(y_jump)) + 2 * (G(y,x,z)-G(y,x+1,z))/(h^2) + 2 * G(y,x,z)/(h^2);
                     
-                    M(county,itm(y,x+1,z)+uy_jump) = 2 * (G(y,x+1,z)-G(y,x,z))/(4*h^2) - 4 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x+1,z)+(y_jump)) = 2 * (G(y,x+1,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/(h^2);
                     
-                    M(county,itm(y,x+2,z)+uy_jump) =  2 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x+2,z)+(y_jump)) =  2 * G(y,x,z)/(h^2);
                     
                 % We are on right boundary (x+1 does not exist) -- COMPLETE
                 elseif bcs(y,x,z,2) == 1 % x == sx
@@ -319,11 +318,11 @@ for z = 1:sz
                     
                     % TERM MULT BY 2
                     % dG/dx * dUy/dx  +  G * d^2Uy/dx^2
-                    M(county,itm(y,x,z)+uy_jump)   = M(county,itm(y,x,z)+uy_jump) + 2 * (G(y,x,z)-G(y,x-1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x,z)+(y_jump))   = M(county,itm(y,x,z)+(y_jump)) + 2 * (G(y,x,z)-G(y,x-1,z))/(h^2) + 2 * G(y,x,z)/(h^2);
 
-                    M(county,itm(y,x-1,z)+uy_jump) = 2 * (G(y,x-1,z)-G(y,x,z))/(4*h^2) - 4 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x-1,z)+(y_jump)) = 2 * (G(y,x-1,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/(h^2);
                     
-                    M(county,itm(y,x-2,z)+uy_jump) =  2 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x-2,z)+(y_jump)) =  2 * G(y,x,z)/(h^2);
                     
                 % x is on interior -- COMPLETE
                 else
@@ -344,11 +343,11 @@ for z = 1:sz
                     
                     % TERM MULT BY 2
                     % dG/dx * dUy/dx  +  G * d^2Uy/dx^2
-                    M(county,itm(y,x+1,z)+uy_jump) = 2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x+1,z)+(y_jump)) = 2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
 
-                    M(county,itm(y,x,z)+uy_jump)   = M(county,itm(y,x,z)+uy_jump) - 4 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x,z)+(y_jump))   = M(county,itm(y,x,z)+(y_jump)) - 4 * G(y,x,z)/(h^2);
 
-                    M(county,itm(y,x-1,z)+uy_jump) = 2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(county,itm(y,x-1,z)+(y_jump)) = 2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
 
                 end
                 
@@ -357,76 +356,76 @@ for z = 1:sz
                 if bcs(y,x,z,3) == -1 % z == 1
                     % TERM MULT BY K2
                     % dG/dy * dUz/dz  +  G * d^2Uz/(dy*dz)
-                    M(county,itm(y,x,z+1)+uz_jump) = k2 * (G(y+1,x,z)-G(y-1,x,z))/(2*h*dz);
+                    M(county,itm(y,x,z+1)+(z_jump)) = k2 * (G(y+1,x,z)-G(y-1,x,z))/(2*h*dz);
 
-                    M(county,itm(y,x,z)+uz_jump) = k2 * (G(y-1,x,z)-G(y+1,x,z))/(2*h*dz);
+                    M(county,itm(y,x,z)+(z_jump)) = k2 * (G(y-1,x,z)-G(y+1,x,z))/(2*h*dz);
 
 
-                    M(county,itm(y+1,x,z+1)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y+1,x,z+1)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
 
-                    M(county,itm(y-1,x,z+1)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y-1,x,z+1)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(county,itm(y+1,x,z)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y+1,x,z)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(county,itm(y-1,x,z)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y-1,x,z)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
                     
                     % TERM MULT BY 2
                     % dG/dz * dUy/dz  +  G * d^2Uy/dz^2
-                    M(county,itm(y,x,z)+uy_jump)   = M(county,itm(y,x,z)+uy_jump) + 2 * (G(y,x,z)-G(y,x,z+1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z)+(y_jump))   = M(county,itm(y,x,z)+(y_jump)) + 2 * (G(y,x,z)-G(y,x,z+1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
                     
-                    M(county,itm(y,x,z+1)+uy_jump) = 2 * (G(y,x,z+1)-G(y,x,z))/(dz^2) - 4 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z+1)+(y_jump)) = 2 * (G(y,x,z+1)-G(y,x,z))/(dz^2) - 4 * G(y,x,z)/(dz^2);
 
-                    M(county,itm(y,x,z+2)+uy_jump) = 2 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z+2)+(y_jump)) = 2 * G(y,x,z)/(dz^2);
                     
                 % We are on below boundary (z+1 does not exist) -- COMPLETE
                 elseif bcs(y,x,z,3) == 1 % z == sz
                     % TERM MULT BY K2
                     % dG/dy * dUz/dz  +  G * d^2Uz/(dy*dz)
-                    M(county,itm(y,x,z)+uz_jump) = k2 * (G(y+1,x,z)-G(y-1,x,z))/(2*h*dz);
+                    M(county,itm(y,x,z)+(z_jump)) = k2 * (G(y+1,x,z)-G(y-1,x,z))/(2*h*dz);
 
-                    M(county,itm(y,x,z-1)+uz_jump) = k2 * (G(y-1,x,z)-G(y+1,x,z))/(2*h*dz);
+                    M(county,itm(y,x,z-1)+(z_jump)) = k2 * (G(y-1,x,z)-G(y+1,x,z))/(2*h*dz);
 
 
-                    M(county,itm(y+1,x,z)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y+1,x,z)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
 
-                    M(county,itm(y-1,x,z)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y-1,x,z)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(county,itm(y+1,x,z-1)+uz_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y+1,x,z-1)+(z_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(county,itm(y-1,x,z-1)+uz_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(county,itm(y-1,x,z-1)+(z_jump)) = k2 * G(y,x,z) / (2*h*dz);
                     
                     % TERM MULT BY 2
                     % dG/dz * dUy/dz  +  G * d^2Uy/dz^2
-                    M(county,itm(y,x,z)+uy_jump)   = M(county,itm(y,x,z)+uy_jump) + 2 * (G(y,x,z)-G(y,x,z-1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z)+(y_jump))   = M(county,itm(y,x,z)+(y_jump)) + 2 * (G(y,x,z)-G(y,x,z-1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
 
-                    M(county,itm(y,x,z-1)+uy_jump) = 2 * (G(y,x,z-1)-G(y,x,z))/(dz^2) - 4 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z-1)+(y_jump)) = 2 * (G(y,x,z-1)-G(y,x,z))/(dz^2) - 4 * G(y,x,z)/(dz^2);
                     
-                    M(county,itm(y,x,z-2)+uy_jump) = 2 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z-2)+(y_jump)) = 2 * G(y,x,z)/(dz^2);
                     
                 % z is on interior -- COMPLETE
                 else
                     % TERM MULT BY K2
                     % dG/dy * dUz/dz  +  G * d^2Uz/(dy*dz)
-                    M(county,itm(y,x,z+1)+uz_jump) = k2 * (G(y+1,x,z)-G(y-1,x,z))/(4*h*dz);
+                    M(county,itm(y,x,z+1)+(z_jump)) = k2 * (G(y+1,x,z)-G(y-1,x,z))/(4*h*dz);
 
-                    M(county,itm(y,x,z-1)+uz_jump) = k2 * (G(y-1,x,z)-G(y+1,x,z))/(4*h*dz);
+                    M(county,itm(y,x,z-1)+(z_jump)) = k2 * (G(y-1,x,z)-G(y+1,x,z))/(4*h*dz);
 
 
-                    M(county,itm(y+1,x,z+1)+uz_jump) = k2 * G(y,x,z) / (4*h*dz);
+                    M(county,itm(y+1,x,z+1)+(z_jump)) = k2 * G(y,x,z) / (4*h*dz);
 
-                    M(county,itm(y-1,x,z+1)+uz_jump) = -1 * k2 * G(y,x,z) / (4*h*dz);
+                    M(county,itm(y-1,x,z+1)+(z_jump)) = -1 * k2 * G(y,x,z) / (4*h*dz);
 
-                    M(county,itm(y+1,x,z-1)+uz_jump) = -1 * k2 * G(y,x,z) / (4*h*dz);
+                    M(county,itm(y+1,x,z-1)+(z_jump)) = -1 * k2 * G(y,x,z) / (4*h*dz);
 
-                    M(county,itm(y-1,x,z-1)+uz_jump) = k2 * G(y,x,z) / (4*h*dz);
+                    M(county,itm(y-1,x,z-1)+(z_jump)) = k2 * G(y,x,z) / (4*h*dz);
                     
                     % TERM MULT BY 2
                     % dG/dz * dUy/dz  +  G * d^2Uy/dz^2
-                    M(county,itm(y,x,z+1)+uy_jump) = 2 * (G(y,x,z+1)-G(y,x,z-1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z+1)+(y_jump)) = 2 * (G(y,x,z+1)-G(y,x,z-1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
 
-                    M(county,itm(y,x,z)+uy_jump)   = M(county,itm(y,x,z)+uy_jump) - 4 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z)+(y_jump))   = M(county,itm(y,x,z)+(y_jump)) - 4 * G(y,x,z)/(dz^2);
 
-                    M(county,itm(y,x,z-1)+uy_jump) = 2 * (G(y,x,z-1)-G(y,x,z+1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
+                    M(county,itm(y,x,z-1)+(y_jump)) = 2 * (G(y,x,z-1)-G(y,x,z+1))/(dz^2) + 2 * G(y,x,z)/(dz^2);
                         
                 end
             end 
@@ -439,11 +438,11 @@ for z = 1:sz
                 % Z ONLY DERIVATIVES -- COMPLETE
                 % TERM MULT BY K1
                 % dG/dz * dUz/dz  +  G * d^2Uz/dz^2
-                M(countz,itm(y,x,z+1)+uz_jump) = k1 * (G(y,x,z+1)-G(y,x,z-1))/(4*dz^2) + k1 * G(y,x,z)/dz^2;
+                M(countz,itm(y,x,z+1)+(z_jump)) = (k1 * (G(y,x,z+1)-G(y,x,z-1))/(4*dz^2)) + (k1 * G(y,x,z)/dz^2);
 
-                M(countz,itm(y,x,z)+uz_jump)   = -2 * k1 * G(y,x,z)/dz^2;
+                M(countz,itm(y,x,z)+(z_jump))   = -2 * k1 * G(y,x,z)/dz^2;
 
-                M(countz,itm(y,x,z-1)+uz_jump) = k1 * (G(y,x,z-1)-G(y,x,z+1))/(4*dz^2) + k1 * G(y,x,z)/dz^2;      
+                M(countz,itm(y,x,z-1)+(z_jump)) = (k1 * (G(y,x,z-1)-G(y,x,z+1))/(4*dz^2)) + (k1 * G(y,x,z)/dz^2);      
                         
                 % X & Z DERIVATIVES -- COMPLETE
                 % We are on left boundary (x-1 does not exist) -- COMPLETE
@@ -455,7 +454,7 @@ for z = 1:sz
                     M(countz,itm(y,x,z)) = k2 * (G(y,x,z-1)-G(y,x,z+1))/(2*h*dz);
 
 
-                    M(countz,itm(y,x+1,z+1)) = k2 * G(y,x,z) / (4*h*dz);
+                    M(countz,itm(y,x+1,z+1)) = k2 * G(y,x,z) / (2*h*dz);
 
                     M(countz,itm(y,x+1,z-1)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
@@ -465,11 +464,11 @@ for z = 1:sz
                     
                     % TERM MULT BY 2
                     % dG/dx * dUz/dx  +  G * d^2Uz/dx^2
-                    M(countz,itm(y,x,z)+uz_jump)   = M(countz,itm(y,x,z)+uz_jump) + 2 * (G(y,x,z)-G(y,x+1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x,z)+(z_jump))   = M(countz,itm(y,x,z)+(z_jump)) + 2 * (G(y,x,z)-G(y,x+1,z))/(h^2) + 2 * G(y,x,z)/(h^2);
                     
-                    M(countz,itm(y,x+1,z)+uz_jump) = 2 * (G(y,x+1,z)-G(y,x,z))/(4*h^2) - 4 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x+1,z)+(z_jump)) = 2 * (G(y,x+1,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/(h^2);
 
-                    M(countz,itm(y,x+2,z)+uz_jump) = 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x+2,z)+(z_jump)) = 2 * G(y,x,z)/(h^2);
                         
                 % We are on right boundary (x+1 does not exist) -- COMPLETE
                 elseif bcs(y,x,z,2) == 1 %x == sx
@@ -490,11 +489,11 @@ for z = 1:sz
                     
                     % TERM MULT BY 2
                     % dG/dx * dUz/dx  +  G * d^2Uz/dx^2
-                    M(countz,itm(y,x,z)+uz_jump)   = M(countz,itm(y,x,z)+uz_jump) + 2 * (G(y,x,z)-G(y,x-1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x,z)+(z_jump))   = M(countz,itm(y,x,z)+(z_jump)) + 2 * (G(y,x,z)-G(y,x-1,z))/(h^2) + 2 * G(y,x,z)/(h^2);
 
-                    M(countz,itm(y,x-1,z)+uz_jump) = 2 * (G(y,x-1,z)-G(y,x,z))/(4*h^2) - 4 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x-1,z)+(z_jump)) = 2 * (G(y,x-1,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/(h^2);
                     
-                    M(countz,itm(y,x-2,z)+uz_jump) = 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x-2,z)+(z_jump)) = 2 * G(y,x,z)/(h^2);
 
                 % x is on interior -- COMPLETE
                 else
@@ -515,11 +514,11 @@ for z = 1:sz
                     
                     % TERM MULT BY 2
                     % dG/dx * dUz/dx  +  G * d^2Uz/dx^2
-                    M(countz,itm(y,x+1,z)+uz_jump) = 2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x+1,z)+(z_jump)) = 2 * (G(y,x+1,z)-G(y,x-1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
 
-                    M(countz,itm(y,x,z)+uz_jump)   = M(countz,itm(y,x,z)+uz_jump) - 4 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x,z)+(z_jump))   = M(countz,itm(y,x,z)+(z_jump)) - 4 * G(y,x,z)/(h^2);
 
-                    M(countz,itm(y,x-1,z)+uz_jump) = 2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x-1,z)+(z_jump)) = 2 * (G(y,x-1,z)-G(y,x+1,z))/(4*h^2) + 2 * G(y,x,z)/(h^2);
 
                 end
                 
@@ -528,78 +527,78 @@ for z = 1:sz
                 if bcs(y,x,z,1) == -1 %y == 1
                     % TERM MULT BY K2
                     % dG/dz * dUy/dy  +  G * d^2Uy/(dy*dz)
-                    M(countz,itm(y+1,x,z)+uy_jump) = k2 * (G(y,x,z+1)-G(y,x,z-1))/(2*h*dz);
+                    M(countz,itm(y+1,x,z)+(y_jump)) = k2 * (G(y,x,z+1)-G(y,x,z-1))/(2*h*dz);
 
-                    M(countz,itm(y,x,z)+uy_jump) = k2 * (G(y,x,z-1)-G(y,x,z+1))/(2*h*dz);
+                    M(countz,itm(y,x,z)+(y_jump)) = k2 * (G(y,x,z-1)-G(y,x,z+1))/(2*h*dz);
 
 
-                    M(countz,itm(y+1,x,z+1)+uy_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y+1,x,z+1)+(y_jump)) = k2 * G(y,x,z) / (2*h*dz);
 
-                    M(countz,itm(y+1,x,z-1)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y+1,x,z-1)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(countz,itm(y,x,z+1)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y,x,z+1)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(countz,itm(y,x,z-1)+uy_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y,x,z-1)+(y_jump)) = k2 * G(y,x,z) / (2*h*dz);
                     
                     % TERM MULT BY 2
                     % dG/dy * dUz/dy  +  G * d^2Uz/dy^2
-                    M(countz,itm(y,x,z)+uz_jump)   = M(countz,itm(y,x,z)+uz_jump) + 2 * (G(y,x,z)-G(y+1,x,z))/(h^2) + 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x,z)+(z_jump))   = M(countz,itm(y,x,z)+(z_jump)) + 2 * (G(y,x,z)-G(y+1,x,z))/(h^2) + 2 * G(y,x,z)/(h^2);
                     
-                    M(countz,itm(y+1,x,z)+uz_jump) = 2 * (G(y+1,x,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/h^2;
+                    M(countz,itm(y+1,x,z)+(z_jump)) = 2 * (G(y+1,x,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/h^2;
 
-                    M(countz,itm(y+2,x,z)+uz_jump) = 2 * G(y,x,z)/h^2;
+                    M(countz,itm(y+2,x,z)+(z_jump)) = 2 * G(y,x,z)/h^2;
                         
                 % We are on bottom boundary (y+1 does not exist) -- COMPLETE
                 elseif bcs(y,x,z,1) == 1 %y == sy
                     % TERM MULT BY K2
                     % dG/dz * dUy/dy  +  G * d^2Uy/(dy*dz)
-                    M(countz,itm(y,x,z)+uy_jump) = k2 * (G(y,x,z+1)-G(y,x,z-1))/(2*h*dz);
+                    M(countz,itm(y,x,z)+(y_jump)) = k2 * (G(y,x,z+1)-G(y,x,z-1))/(2*h*dz);
 
-                    M(countz,itm(y-1,x,z)+uy_jump) = k2 * (G(y,x,z-1)-G(y,x,z+1))/(2*h*dz);
+                    M(countz,itm(y-1,x,z)+(y_jump)) = k2 * (G(y,x,z-1)-G(y,x,z+1))/(2*h*dz);
 
 
-                    M(countz,itm(y,x,z+1)+uy_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y,x,z+1)+(y_jump)) = k2 * G(y,x,z) / (2*h*dz);
 
-                    M(countz,itm(y,x,z-1)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y,x,z-1)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(countz,itm(y-1,x,z+1)+uy_jump) = -1 * k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y-1,x,z+1)+(y_jump)) = -1 * k2 * G(y,x,z) / (2*h*dz);
 
-                    M(countz,itm(y-1,x,z-1)+uy_jump) = k2 * G(y,x,z) / (2*h*dz);
+                    M(countz,itm(y-1,x,z-1)+(y_jump)) = k2 * G(y,x,z) / (2*h*dz);
                     
                     % TERM MULT BY 2
                     % dG/dy * dUz/dy  +  G * d^2Uz/dy^2
                     
 
-                    M(countz,itm(y,x,z)+uz_jump)   = M(countz,itm(y,x,z)+uz_jump) + 2 * (G(y,x,z)-G(y-1,x,z))/(h^2) + 2 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x,z)+(z_jump))   = M(countz,itm(y,x,z)+(z_jump)) + 2 * (G(y,x,z)-G(y-1,x,z))/(h^2) + 2 * G(y,x,z)/(h^2);
 
-                    M(countz,itm(y-1,x,z)+uz_jump) = 2 * (G(y-1,x,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/h^2;
+                    M(countz,itm(y-1,x,z)+(z_jump)) = 2 * (G(y-1,x,z)-G(y,x,z))/(h^2) - 4 * G(y,x,z)/h^2;
                     
-                    M(countz,itm(y-2,x,z)+uz_jump) = 2 * G(y,x,z)/h^2;
+                    M(countz,itm(y-2,x,z)+(z_jump)) = 2 * G(y,x,z)/h^2;
 
                 % y is on interior -- COMPLETE
                 else
                     % TERM MULT BY K2
                     % dG/dz * dUy/dy  +  G * d^2Uy/(dy*dz)
-                    M(countz,itm(y+1,x,z)+uy_jump) = k2 * (G(y,x,z+1)-G(y,x,z-1))/(4*h*dz);
+                    M(countz,itm(y+1,x,z)+(y_jump)) = k2 * (G(y,x,z+1)-G(y,x,z-1))/(4*h*dz);
 
-                    M(countz,itm(y-1,x,z)+uy_jump) = k2 * (G(y,x,z-1)-G(y,x,z+1))/(4*h*dz);
+                    M(countz,itm(y-1,x,z)+(y_jump)) = k2 * (G(y,x,z-1)-G(y,x,z+1))/(4*h*dz);
 
 
-                    M(countz,itm(y+1,x,z+1)+uy_jump) = k2 * G(y,x,z) / (4*h*dz);
+                    M(countz,itm(y+1,x,z+1)+(y_jump)) = k2 * G(y,x,z) / (4*h*dz);
 
-                    M(countz,itm(y+1,x,z-1)+uy_jump) = -1 * k2 * G(y,x,z) / (4*h*dz);
+                    M(countz,itm(y+1,x,z-1)+(y_jump)) = -1 * k2 * G(y,x,z) / (4*h*dz);
 
-                    M(countz,itm(y-1,x,z+1)+uy_jump) = -1 * k2 * G(y,x,z) / (4*h*dz);
+                    M(countz,itm(y-1,x,z+1)+(y_jump)) = -1 * k2 * G(y,x,z) / (4*h*dz);
 
-                    M(countz,itm(y-1,x,z-1)+uy_jump) = k2 * G(y,x,z) / (4*h*dz);
+                    M(countz,itm(y-1,x,z-1)+(y_jump)) = k2 * G(y,x,z) / (4*h*dz);
                     
                     % TERM MULT BY 2
                     % dG/dy * dUz/dy  +  G * d^2Uz/dy^2
-                    M(countz,itm(y+1,x,z)+uz_jump) = 2 * (G(y+1,x,z)-G(y-1,x,z))/(h^2) + 2 * G(y,x,z)/h^2;
+                    M(countz,itm(y+1,x,z)+(z_jump)) = 2 * (G(y+1,x,z)-G(y-1,x,z))/(h^2) + 2 * G(y,x,z)/h^2;
 
-                    M(countz,itm(y,x,z)+uz_jump)   = M(countz,itm(y,x,z)+uz_jump) - 4 * G(y,x,z)/(h^2);
+                    M(countz,itm(y,x,z)+(z_jump))   = M(countz,itm(y,x,z)+(z_jump)) - 4 * G(y,x,z)/(h^2);
 
-                    M(countz,itm(y-1,x,z)+uz_jump) = 2 * (G(y-1,x,z)-G(y+1,x,z))/(h^2) + 2 * G(y,x,z)/h^2;
+                    M(countz,itm(y-1,x,z)+(z_jump)) = 2 * (G(y-1,x,z)-G(y+1,x,z))/(h^2) + 2 * G(y,x,z)/h^2;
 
                 end
             end
