@@ -8,11 +8,26 @@ h = data.h;
 dz = data.dz;
 tissue = data.Tissues;
 
-[matX,matY,matZ] = gradN_matrix(sx,sy,sz,h,dz,bcs);
+[matX,matY,matZ] = gradN_matrix_3D(sx,sy,sz,h,dz,bcs);
 [M, E, nu] = mech_matrix_build_3D_v1(h, dz, tissue, bcs);
 
 
-[damper, s_xx, s_yy, s_zz, s_xy, s_xz, s_yz] = get_damper(matX, matY, matZ, N, M, E, nu, h, dz);
+[damper, s_vm, Ux, Uy, Uz] = get_damper_3D(matX, matY, matZ, N, M, E, nu);
+
+slice = round(sz/2);
+figure
+subplot(2,3,1)
+imagesc(damper(:,:,slice)); axis image; axis off; title('Damper');
+subplot(2,3,2)
+imagesc(s_vm(:,:,slice)); axis image; axis off; title('Sig_v_m');
+% subplot(2,3,3)
+% imagesc(s_zz(:,:,slice)); axis image; axis off; title('Ux');
+subplot(2,3,4)
+imagesc(Ux(:,:,slice)); axis image; axis off; title('U_x');
+subplot(2,3,5)
+imagesc(Uy(:,:,slice)); axis image; axis off; title('U_y');
+subplot(2,3,6)
+imagesc(Uz(:,:,slice)); axis image; axis off; title('U_z');
 
 
 figure

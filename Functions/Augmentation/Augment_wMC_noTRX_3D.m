@@ -1,4 +1,5 @@
 function [N_aug,kp] = Augment_wMC_noTRX_3D(N, t, h, dz, dt, bcs, bounds, ntp_cal, M, E, nu, matX, matY, matZ)
+    
     thresh = 0.15;
     
     [sy,sx,sz,~] = size(N);

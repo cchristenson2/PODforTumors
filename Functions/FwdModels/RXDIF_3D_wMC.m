@@ -18,8 +18,10 @@ Contributors: Chase Christenson
 %}
 
 function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu, matX, matY, matZ)
-    
     theta = 1; %If using volume fractions
+    
+%     disp(size(t));
+%     disp(size(dt));
 
     t_ = (t/dt) + 1; %Indices of densities to output
     
@@ -50,7 +52,8 @@ function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu
                     if(boundary(1)==0)
                         y1 = (d(y+1,x,z)-d(y-1,x,z))/(2*h);
                         y2 = (N(y+1,x,z)-N(y-1,x,z))/(2*h);
-                        inv_y = d(y,x,z)*(N(y+1,x,z)-2*N(y,x,z)+N(y-1,x,z))/(h^2) + y1 + y2;
+                        lap_y = d(y,x,z)*(N(y+1,x,z)-2*N(y,x,z)+N(y-1,x,z))/(h^2);
+                        inv_y = lap_y + y1*y2;
 
                     elseif(boundary(1)==1)
                         inv_y = d(y,x,z)*(-2*N(y,x,z)+2*N(y-1,x,z))/(h^2);
@@ -65,7 +68,8 @@ function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu
                     if(boundary(2)==0)
                         x1 = (d(y,x+1,z)-d(y,x-1,z))/(2*h);
                         x2 = (N(y,x+1,z)-N(y,x-1,z))/(2*h);
-                        inv_x = d(y,x,z)*(N(y,x+1,z)-2*N(y,x,z)+N(y,x-1,z))/(h^2) + x1 + x2;
+                        lap_x = d(y,x,z)*(N(y,x+1,z)-2*N(y,x,z)+N(y,x-1,z))/(h^2);
+                        inv_x = lap_x + x1*x2;
 
                     elseif(boundary(2)==1)
                         inv_x = d(y,x,z)*(-2*N(y,x,z)+2*N(y,x-1,z))/(h^2);
@@ -80,7 +84,8 @@ function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu
                     if(boundary(3)==0)
                         z1 = (d(y,x,z+1)-d(y,x,z-1))/(2*dz);
                         z2 = (N(y,x,z+1)-N(y,x,z-1))/(2*dz);
-                        inv_z = d(y,x,z)*(N(y,x,z+1)-2*N(y,x,z)+N(y,x,z-1))/(dz^2) + z1 + z2;
+                        lap_z = d(y,x,z)*(N(y,x,z+1)-2*N(y,x,z)+N(y,x,z-1))/(dz^2);
+                        inv_z = lap_z + z1 + z2;
 
                     elseif(boundary(3)==1)
                         inv_z = d(y,x,z)*(-2*N(y,x,z)+2*N(y,x,z-1))/(dz^2);
@@ -91,7 +96,7 @@ function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu
                         inv_z = 0;
                     end
 
-                    invasion = inv_y + inv_x + inv_z;
+                    invasion = inv_y + inv_x*inv_z;
                     prolif   = N(y,x,z)*kp(y,x,z)*(1-(N(y,x,z)/theta));
 
                     temp(y,x,z) = N(y,x,z) + dt*(invasion + prolif);

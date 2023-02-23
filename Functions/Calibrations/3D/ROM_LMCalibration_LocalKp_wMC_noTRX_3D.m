@@ -76,7 +76,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
     % Assemble matrices that calc gradient
     [sy,sx,sz] = size(tissues);
     [matX, matY, matZ] = gradN_matrix_3D(sx, sy, sz, h, dz, bcs);
-    matXYZ = [matX, zeros(size(matY)), zeros(size(matZ)); zeros(size(matX)), matY, zeros(size(matZ)); zeros(size(matX)), zeros(size(matY)), matZ];
+    matX = sparse(matX); matY = sparse(matY); matZ = sparse(matZ);
     
     
     %Augment patient data and build kp
@@ -89,7 +89,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
     kp_g = kp_g(:);
    
 %     d_g        = exp(log(d_low) + (log(d_up)-log(d_low)) * rand(1,1));
-    d_g      = d_up/5;
+    d_g      = d_up/10;
     
     %Get stress maps for augmented data
     [Ux_aug, Uy_aug, Uz_aug] = getDisplacementMaps_3D(N_aug, M, E, nu, matX, matY, matZ);
@@ -100,7 +100,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
     [V,k,V_full] = getProjectionMatrix(N_aug, 0);
     
     [Vx,Vy,Vz] = getProjectionMatrix_MC(Ux_aug, Uy_aug, Uz_aug,k);
-    V_s = [Vx, zeros(size(Vy)), zeros(size(Vz)); zeros(size(Vx)), Vy, zeros(size(Vz)); zeros(size(Vx)), zeros(size(Vy)), Vz];
+    V_s = sparse([Vx, zeros(size(Vy)), zeros(size(Vz)); zeros(size(Vx)), Vy, zeros(size(Vz)); zeros(size(Vx)), zeros(size(Vy)), Vz]);
     
     %Reduce mechanics variables
     M_r = V_s' * M * V_s;
@@ -143,7 +143,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
     end
 
     %Initialize SSE
-    [N_g_r, TC] = OperatorRXDIF_3D_wMC(N0_r, A_g, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, matXYZ, V, V_s, 1, bcs, h, dz);
+    [N_g_r, TC] = OperatorRXDIF_3D_wMC(N0_r, A_g, d_g, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, V_s, 1, bcs, h, dz);
     SSE = sum((N_true_r - N_g_r).^2, 'all');
     
     if(isempty(gcp('nocreate')))
@@ -195,7 +195,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
                 
                 B_t = B_g + B_change; H_t = H_g + H_change;
                 
-                N_kp = OperatorRXDIF_3D_wMC(N0_r, A_g, B_t, H_t, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, matXYZ, V, V_s, 1, bcs, h, dz);
+                N_kp = OperatorRXDIF_3D_wMC(N0_r, A_g, d_g, B_t, H_t, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, V_s, 1, bcs, h, dz);
                 
                 J(:,i) = reshape(N_kp - N_g_r, [], 1)./dif_kp;
             end
@@ -208,7 +208,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
             d_p = d_g.*delta_d;
             dif = d_p - d_g;
             A_t = OperatorInterp_A(d_p, bounds, Ar_lib);
-            N_d = OperatorRXDIF_3D_wMC(N0_r, A_t, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, matXYZ, V, V_s, 1, bcs, h, dz);
+            N_d = OperatorRXDIF_3D_wMC(N0_r, A_t, d_p, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, V_s, 1, bcs, h, dz);
             J(:,num_kp+1) = reshape(N_d - N_g_r, [], 1)./dif;
 
 %             %Perturb alpha1 in reduced space
@@ -282,7 +282,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
         B_test = B_g + B_change;
         H_test = H_g + H_change;
         
-        [N_test, TC_test] = OperatorRXDIF_3D_wMC(N0_r, A_test, B_test, H_test, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, matXYZ, V, V_s, 1, bcs, h, dz);       
+        [N_test, TC_test] = OperatorRXDIF_3D_wMC(N0_r, A_test, d_test, B_test, H_test, t, dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, V_s, 1, bcs, h, dz);       
         SSE_test   = sum((N_true_r - N_test).^2,'all');
 
         if(SSE_test < SSE)
@@ -366,7 +366,7 @@ function [params, stats, outputs, fig, temp] = ROM_LMCalibration_LocalKp_wMC_noT
             H_r = H_r + V(i,:)'*kp_g(i)*kron(V(i,:),V(i,:));
         end
         
-        N_pred_r = OperatorRXDIF_3D_wMC(N0_r, A_r, B_r, H_r, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, matXYZ, V, V_s, 1, bcs, h, dz);
+        N_pred_r = OperatorRXDIF_3D_wMC(N0_r, A_r, d_test, B_r, H_r, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, V_s, 1, bcs, h, dz);
         N_pred_r_reshape = reshape(V*N_pred_r, size(N0));
         
         %Option 2: predict in full state with found parameters

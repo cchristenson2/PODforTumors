@@ -23,7 +23,7 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, A, d, B, H, T1, T2, tx_params, t, dt, M, E, nu, matX, matY, matX_r, matY_r, matXY, V, Vs, reduced, bcs, h, dz)
+function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, d, B, H, T1, T2, tx_params, t, dt, M, E, nu, matX, matY, matX_r, matY_r, V, Vs, Ar_lib, k, reduced)
 
     freq = 25;
 
@@ -48,22 +48,21 @@ function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, A, d, B, H, T1, T2, tx_param
         S = damper(:);
     else
         N_full = V*N0(:);
-        grad_N = Vs' * (matXY * [N_full(:); N_full(:)]);
+        grad_N = Vs' * ([matX * N_full(:); matY * N_full(:)]);
         damper = get_damper_reduced(matX, matY, grad_N, M, E, nu, Vs);
         S = damper(:);
-        temp_A = assembleA(bcs(:,:,1), d.*S, h, dz, bcs);
-        A = V' * temp_A * V;
+        A = OperatorInterp_local(V'*(d.*S), Ar_lib, k);
     end
     
-    for k = 2:nt
+    for l = 2:nt
         %Get time since last treatment
-        if(k-1>nt_trx(trx_cnt))
+        if(l-1>nt_trx(trx_cnt))
             if(trx_on==0)
                 t = 0;
             end
             trx_on = 1;
             if(trx_cnt < numel(nt_trx))
-                if(k-1>nt_trx(trx_cnt+1))
+                if(l-1>nt_trx(trx_cnt+1))
                     trx_cnt=trx_cnt+1;
                     t=0;
                 end
@@ -74,32 +73,32 @@ function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC(N0, A, d, B, H, T1, T2, tx_param
         end
         %Solve treatment effects
         if(trx_on~=0)
-            treat = (T1.*exp(-b1*t) + T2.*exp(-b2*t))*(N(:,k-1));
+            treat = (T1.*exp(-b1*t) + T2.*exp(-b2*t))*(N(:,l-1));
         else
             treat = 0;
         end
         
         if(reduced==0)
-            X_dot = (matX * N(:,k-1)) .* (matX * (d.*S));
-            Y_dot = (matY * N(:,k-1)) .* (matY * (d.*S));
-            N(:,k) = N(:,k-1) + dt*(S.*(A*N(:,k-1)) + (X_dot + Y_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)) - treat);
+            X_dot = (matX * N(:,l-1)) .* (matX * (d.*S));
+            Y_dot = (matY * N(:,l-1)) .* (matY * (d.*S));
+            N(:,l) = N(:,l-1) + dt*(S.*(A*N(:,l-1)) + (X_dot + Y_dot) + B*N(:,l-1) - H*kron(N(:,l-1), N(:,l-1)) - treat);
         else
-            X_dot = (matX_r * N(:,k-1)) .* (matX_r * (V'*(d.*S)));
-            Y_dot = (matY_r * N(:,k-1)) .* (matY_r * (V'*(d.*S)));
-            N(:,k) = N(:,k-1) + dt*(A*N(:,k-1) + (X_dot + Y_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)) - treat);
+            X_dot = (matX_r * N(:,l-1)) .* (matX_r * (V'*(d.*S)));
+            Y_dot = (matY_r * N(:,l-1)) .* (matY_r * (V'*(d.*S)));
+            N(:,l) = N(:,l-1) + dt*(A*N(:,l-1) + (X_dot + Y_dot) + B*N(:,l-1) - H*kron(N(:,l-1), N(:,l-1)) - treat);
         end
         
         
-        if mod(k, freq) == 0
+        if mod(l, freq) == 0
             if(reduced==0)
-                damper = get_damper(matX, matY, N(:,k), M, E, nu);
+                damper = get_damper(matX, matY, N(:,l), M, E, nu);
                 S = damper(:);
             else
-                N_full = V*N(:,k);
-                grad_N = Vs' * (matXY * [N_full(:); N_full(:)]);
+                N_full = V*N0(:);
+                grad_N = Vs' * ([matX * N_full(:); matY * N_full(:)]);
                 damper = get_damper_reduced(matX, matY, grad_N, M, E, nu, Vs);
                 S = damper(:);
-                A = V' * assembleA(bcs(:,:,1), d.*S, h, dz, bcs) * V;
+                A = OperatorInterp_local(V'*(d.*S), Ar_lib, k);
             end
         end
         

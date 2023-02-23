@@ -22,7 +22,6 @@ function [Tr_lib] = reduceTLibrary(T_lib, V, bounds, tx_params)
     Tr_lib = struct;
     
     for i = 1:num_a
-        d      = bounds.d_bounds(i);
         alpha  = bounds.alpha_bounds(i);
         alpha_str = replace(num2str(alpha,fmt),'.','_');
 

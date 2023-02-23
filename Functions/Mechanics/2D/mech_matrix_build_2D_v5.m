@@ -10,7 +10,7 @@ function [M, E, nu] =  mech_matrix_build_2D_v5(h,tissue, bcs)
 
 % a bit of setup
 [sy,sx] = size(tissue);
-M = zeros(sy*sx*2,sy*sx*2); % it big
+M = sparse(sy*sx*2,sy*sx*2); % it big
 
 % First thing, use our tissue map to set mechanics params
 % we use one nu value, but multiple E values

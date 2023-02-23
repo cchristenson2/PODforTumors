@@ -20,14 +20,14 @@ E_adipose = 2e3;
 E_fibro = 2*2e3;
 E_tumor = 10*2e3;
 
-% E = zeros(size(tissue));
-% E(tissue == 1) = E_adipose;
-% E(tissue == 2) = E_fibro;
-% E(tissue == 0) = E_tumor;
+E = zeros(size(tissue));
+E(tissue == 1) = E_adipose;
+E(tissue == 2) = E_fibro;
+E(tissue == 0) = E_tumor;
 
 % E = imgaussfilt(E,2);
 
-E = ones(size(tissue)).*E_adipose;
+% E = ones(size(tissue)).*E_adipose;
 
 E(bcs(:,:,:,1) ==2 ) = 0;
 

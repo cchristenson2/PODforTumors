@@ -59,7 +59,7 @@ function [N_aug,kp] = Augment_wMC_comb_2D(N, t, h, dt, bcs, bounds, ntp_cal, tx_
                     t_out = [t(1)+dt:dt:t(2)]-t(1);
                     t_idx = (t_out + t(1))./dt + 1;
                 end
-                N_aug(:,:,t_idx) = RXDIF_2D_wMC_comb(initial, kp, d, alpha1, tx_params, t_out, h, dt, bcs, M, E, nu, matX, matY);
+                N_aug(:,:,t_idx) = RXDIF_2D_wMC_wAC_comb(initial, kp, d, alpha1, tx_params, t_out, h, dt, bcs, M, E, nu, matX, matY);
             end
         else % three time point calibration, run twice, once eith each kp map
             if(i==1)
@@ -71,7 +71,7 @@ function [N_aug,kp] = Augment_wMC_comb_2D(N, t, h, dt, bcs, bounds, ntp_cal, tx_
                 t_out = [t(1)+dt:dt:t(2)]-t(1);
                 t_idx = (t_out + t(1))./dt + 1;
             end
-            N_aug(:,:,t_idx) = RXDIF_2D_wMC_comb(initial, kp, d, alpha1, tx_params, t_out, h, dt, bcs, M, E, nu, matX, matY);
+            N_aug(:,:,t_idx) = RXDIF_2D_wMC_wAC_comb(initial, kp, d, alpha1, tx_params, t_out, h, dt, bcs, M, E, nu, matX, matY);
         end
     end
     if(ntp_cal == 2) % Add 3rd time point to end if needed

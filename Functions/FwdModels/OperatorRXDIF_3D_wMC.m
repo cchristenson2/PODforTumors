@@ -23,25 +23,18 @@ Output:
 Contributors: Chase Christenson, Graham Pash
 %}
 
-function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, matXYZ, V, Vs, reduced, bcs, h, dz)
+function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, Vs, reduced, bcs, h, dz)
 
     freq = 25;
 
     nt = t(end)/dt + 1;
     t_ind = t./dt + 1;
     
-%     freq = 25;
-    
-%     [sy,sx,sz,n] = size(bcs);
-%     if(n==1)
-%         sz = 1;
-%     end
     
     [num,~] = size(N0);
     N = zeros(num, nt);
     N(:,1) = N0;
-    
-%     A0 = A;
+
     
     
     % Initialize damped diffusivity
@@ -50,8 +43,9 @@ function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, mat
         S = damper(:);
     else
         N_full = V*N0(:);
-        grad_N = Vs' * (matXYZ * [N_full(:); N_full(:); N_full(:)]);
+        grad_N = Vs' * [matX*N_full(:); matY*N_full(:); matZ*N_full(:)];
         damper = get_damper_reduced_3D(matX, matY, matZ, grad_N, M, E, nu, Vs);
+        disp(find(isnan(damper)));
         S = damper(:);
         temp_A = assembleA(bcs(:,:,:,1), d.*S, h, dz, bcs);
         A = V' * temp_A * V;
@@ -78,7 +72,7 @@ function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, mat
 %         disp(size(V'));
             X_dot = (matX_r * N(:,k-1)) .* (matX_r * (V'*(d.*S)));
             Y_dot = (matY_r * N(:,k-1)) .* (matY_r * (V'*(d.*S)));
-            Y_dot = (matZ_r * N(:,k-1)) .* (matZ_r * (V'*(d.*S)));
+            Z_dot = (matZ_r * N(:,k-1)) .* (matZ_r * (V'*(d.*S)));
             N(:,k) = N(:,k-1) + dt*(A*N(:,k-1) + (X_dot + Y_dot + Z_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)));
         end
         
@@ -91,7 +85,7 @@ function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, mat
                 S = damper(:);
             else
                 N_full = V*N0(:);
-                grad_N = Vs' * (matXYZ * [N_full(:); N_full(:); N_full(:)]);
+                grad_N = Vs' * [matX*N_full(:); matY*N_full(:); matZ*N_full(:)];
                 damper = get_damper_reduced_3D(matX, matY, matZ, grad_N, M, E, nu, Vs);
                 S = damper(:);
                 temp_A = assembleA(bcs(:,:,:,1), d.*S, h, dz, bcs);

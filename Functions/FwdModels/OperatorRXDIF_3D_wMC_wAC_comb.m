@@ -23,7 +23,7 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = OperatorRXDIF_3D_wMC_wAC_comb(N0, A, d, B, H, T1, tx_params, t, dt, M, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, matXYZ, V, Vs, reduced, bcs, h, dz)
+function [N_sim, TC] = OperatorRXDIF_3D_wMC_wAC_comb(N0, A, d, B, H, T1, tx_params, t, dt, M, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, Vs, reduced, bcs, h, dz)
 
     freq = 25;
 
@@ -48,7 +48,7 @@ function [N_sim, TC] = OperatorRXDIF_3D_wMC_wAC_comb(N0, A, d, B, H, T1, tx_para
         S = damper(:);
     else
         N_full = V*N0(:);
-        grad_N = Vs' * (matXYZ * [N_full(:); N_full(:); N_full(:)]);
+        grad_N = Vs' * [matX*N_full(:); matY*N_full(:); matZ*N_full(:)];
         damper = get_damper_reduced_3D(matX, matY, matZ, grad_N, M, E, nu, Vs);
         S = damper(:);
         temp_A = assembleA(bcs(:,:,:,1), d.*S, h, dz, bcs);
@@ -105,7 +105,7 @@ function [N_sim, TC] = OperatorRXDIF_3D_wMC_wAC_comb(N0, A, d, B, H, T1, tx_para
                 S = damper(:);
             else
                 N_full = V*N0(:);
-                grad_N = Vs' * (matXYZ * [N_full(:); N_full(:); N_full(:)]);
+                grad_N = Vs' * [matX*N_full(:); matY*N_full(:); matZ*N_full(:)];
                 damper = get_damper_reduced_3D(matX, matY, matZ, grad_N, M, E, nu, Vs);
                 S = damper(:);
                 temp_A = assembleA(bcs(:,:,:,1), d.*S, h, dz, bcs);

@@ -79,7 +79,7 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_wMC_noTRX_3D(
     kp_g(~ROI) = 0;
     
 %     d_g        = exp(log(d_low) + (log(d_up)-log(d_low)) * rand(1,1));
-    d_g      = d_up/5;
+    d_g      = d_up/10;
     
 %     alpha1_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));
 %     alpha2_g   = exp(log(alpha_low) + (log(alpha_up)-log(alpha_low)) * rand(1,1));    
@@ -254,7 +254,7 @@ function [params, stats, outputs, fig] = FOM_LMCalibration_LocalKp_wMC_noTRX_3D(
         N_pred = RXDIF_3D_wMC(N0, kp_g, d_g, tumor.t_scan(end), h, dz, dt, bcs, M, E, nu, matX, matY, matZ);
         outputs.Pred = N_pred;
     end
-    
+    disp('FOM Complete');
     %% Finalize results
     %Save calibrated parameter values
     params.kp = kp_g;

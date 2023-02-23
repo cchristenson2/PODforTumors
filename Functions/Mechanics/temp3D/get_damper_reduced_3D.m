@@ -1,4 +1,4 @@
-function [damper, s_vm, Ux, Uy, Uz] = get_damper_reduced_3D(matX, matY, matZ, grad_N, M_r, E, nu)
+function [damper, s_vm, Ux, Uy, Uz] = get_damper_reduced_3D(matX, matY, matZ, grad_N, M_r, E, nu, Vs)
     lambda1 = 2.5e-3;
     lambda2 = 2.5e-3;
     
@@ -11,9 +11,9 @@ function [damper, s_vm, Ux, Uy, Uz] = get_damper_reduced_3D(matX, matY, matZ, gr
 
     num = numel(Uv);
     Um = zeros(num/3,3);
-    Um(:, 1) = Uv(1:num/2);           Ux = Um(:,1);
-    Um(:, 2) = Uv(num/2+1:2*(num/2)); Uy = Um(:,2);
-    Um(:, 3) = Uv(2*(num/2)+1:end);   Uz = Um(:,3);
+    Um(:, 1) = Uv(1:num/3);           Ux = Um(:,1);
+    Um(:, 2) = Uv(num/3+1:2*(num/3)); Uy = Um(:,2);
+    Um(:, 3) = Uv(2*(num/3)+1:end);   Uz = Um(:,3);
 
 
     e_xx = matX * Um(:,1);
