@@ -20,10 +20,10 @@ Output:
     - Cell map at desired times
     - Full cell map time course
 
-Contributors: Chase Christenson, Graham Pash
+Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, Vs, reduced, bcs, h, dz)
+function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, d, B, H, t, dt, M, E, nu, matX, matY, matZ, matX_r, matY_r, matZ_r, V, Vs, Vd, Ar_lib, k, reduced)
 
     freq = 25;
 
@@ -45,41 +45,26 @@ function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, mat
         N_full = V*N0(:);
         grad_N = Vs' * [matX*N_full(:); matY*N_full(:); matZ*N_full(:)];
         damper = get_damper_reduced_3D(matX, matY, matZ, grad_N, M, E, nu, Vs);
-        disp(find(isnan(damper)));
         S = damper(:);
-        temp_A = assembleA(bcs(:,:,:,1), d.*S, h, dz, bcs);
-        A = V' * temp_A * V;
+        A = OperatorInterp_local(Vd'*S, Ar_lib, k);
+        A = d.*A;
     end
     
-    for k = 2:nt
-        
-%         disp(size(matX_r));
-%         disp(size(N(:,k-1)));
-%         disp(size(d));
-%         disp(size(S));
-%         disp(size(V');
-        
+    for l = 2:nt
         if(reduced==0)
-            X_dot = (matX * N(:,k-1)) .* (matX * (d.*S));
-            Y_dot = (matY * N(:,k-1)) .* (matY * (d.*S));
-            Z_dot = (matZ * N(:,k-1)) .* (matZ * (d.*S));
-            N(:,k) = N(:,k-1) + dt*(S.*(A*N(:,k-1)) + (X_dot + Y_dot + Z_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)));
+            X_dot = (matX * N(:,l-1)) .* (matX * (d.*S));
+            Y_dot = (matY * N(:,l-1)) .* (matY * (d.*S));
+            Z_dot = (matZ * N(:,l-1)) .* (matZ * (d.*S));
+            N(:,l) = N(:,l-1) + dt*(S.*(A*N(:,l-1)) + (X_dot + Y_dot + Z_dot) + B*N(:,l-1) - H*kron(N(:,l-1), N(:,l-1)));
         else
-%             disp(size(matX_r));
-%         disp(size(N(:,k-1)));
-%         disp(size(d));
-%         disp(size(S));
-%         disp(size(V'));
-            X_dot = (matX_r * N(:,k-1)) .* (matX_r * (V'*(d.*S)));
-            Y_dot = (matY_r * N(:,k-1)) .* (matY_r * (V'*(d.*S)));
-            Z_dot = (matZ_r * N(:,k-1)) .* (matZ_r * (V'*(d.*S)));
-            N(:,k) = N(:,k-1) + dt*(A*N(:,k-1) + (X_dot + Y_dot + Z_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)));
+            X_dot = (matX_r * N(:,l-1)) .* (matX_r * (V'*(d.*S)));
+            Y_dot = (matY_r * N(:,l-1)) .* (matY_r * (V'*(d.*S)));
+            Z_dot = (matZ_r * N(:,l-1)) .* (matZ_r * (V'*(d.*S)));
+            N(:,l) = N(:,l-1) + dt*(A*N(:,l-1) + (X_dot + Y_dot + Z_dot) + B*N(:,l-1) - H*kron(N(:,l-1), N(:,l-1)));
         end
+
         
-        
-%         N(:,k) = N(:,k-1) + dt*(S.*(A*N(:,k-1)) + (X_dot + Y_dot) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)));
-        
-        if mod(k, freq) == 0
+        if mod(l, freq) == 0
             if(reduced==0)
                 damper = get_damper_3D(matX, matY, matZ, N0, M, E, nu);
                 S = damper(:);
@@ -88,8 +73,8 @@ function [N_sim, TC] = OperatorRXDIF_3D_wMC(N0, A, d, B, H, t, dt, M, E, nu, mat
                 grad_N = Vs' * [matX*N_full(:); matY*N_full(:); matZ*N_full(:)];
                 damper = get_damper_reduced_3D(matX, matY, matZ, grad_N, M, E, nu, Vs);
                 S = damper(:);
-                temp_A = assembleA(bcs(:,:,:,1), d.*S, h, dz, bcs);
-                A = V' * temp_A * V;
+                A = OperatorInterp_local(Vd'*S, Ar_lib, k);
+                A = d.*A;
             end
         end
         

@@ -23,7 +23,7 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC_comb(N0, d, B, H, T1, tx_params, t, dt, M, E, nu, matX, matY, matX_r, matY_r, V, Vs, Ar_lib, k, reduced)
+function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC_comb(N0, d, B, H, T1, tx_params, t, dt, M, E, nu, matX, matY, matX_r, matY_r, V, Vs, Vd, Ar_lib, k, reduced)
 
     freq = 25;
 
@@ -51,7 +51,8 @@ function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC_comb(N0, d, B, H, T1, tx_params,
         grad_N = Vs' * ([matX * N_full(:); matY * N_full(:)]);
         damper = get_damper_reduced(matX, matY, grad_N, M, E, nu, Vs);
         S = damper(:);
-        A = OperatorInterp_local(V'*(d.*S), Ar_lib, k);
+        A = OperatorInterp_local(Vd'*S, Ar_lib, k);
+        A = d.*A;
     end
     
     for l = 2:nt
@@ -98,7 +99,8 @@ function [N_sim, TC] = OperatorRXDIF_2D_wMC_wAC_comb(N0, d, B, H, T1, tx_params,
                 grad_N = Vs' * ([matX * N_full(:); matY * N_full(:)]);
                 damper = get_damper_reduced(matX, matY, grad_N, M, E, nu, Vs);
                 S = damper(:);
-                A = OperatorInterp_local(V'*(d.*S), Ar_lib, k);
+                A = OperatorInterp_local(Vd'*S, Ar_lib, k);
+                A = d.*A;
             end
         end
         

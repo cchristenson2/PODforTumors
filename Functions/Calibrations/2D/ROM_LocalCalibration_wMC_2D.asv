@@ -143,18 +143,18 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_wMC_2D(tumor, ntp_
     dMode_bounds.up  = zeros(1,k);
     for i = 1:k
         d_test = zeros(numel(N0),1);
-        d_test(V(:,i)>=0) = 1;
-        d_test(V(:,i)<0) = 1e-10;
+        d_test(V(:,i)>=0) = d_up;
+        d_test(V(:,i)<0) = d_low;
         
         dMode_bounds.up(i) = V(:,i)' * d_test;
 
         d_test = zeros(numel(N0),1);
-        d_test(V(:,i)>=0) = 1e-10;
-        d_test(V(:,i)<0) = 1;
+        d_test(V(:,i)>=0) = d_low;
+        d_test(V(:,i)<0) = d_up;
         
         dMode_bounds.low(i) = V(:,i)' * d_test;
     end
-    Ar_lib = buildLocalDiffuseLibrary(N_true(:,:,1), V, V_d, k, 50, dMode_bounds, tumor.h, tumor.dz, tumor.bcs);
+    Ar_lib = buildLocalDiffuseLibrary(N_true(:,:,1), V, V_d, k, 20, dMode_bounds, tumor.h, tumor.dz, tumor.bcs);
     
     
     t_extra_offline = toc(start);
@@ -185,13 +185,13 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_wMC_2D(tumor, ntp_
     num_kp = k;
     %Initialize SSE
     if(model==0)
-        [N_g_r, TC] = OperatorRXDIF_2D_wMC(N0_r, d_g, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+        [N_g_r, TC] = OperatorRXDIF_2D_wMC(N0_r, d_g, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         num_p  = num_kp + 1;
     elseif(model==1)
-        [N_g_r, TC] = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_g, H_g, Ta_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+        [N_g_r, TC] = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_g, H_g, Ta_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         num_p  = num_kp + 2;
     else
-        [N_g_r, TC] = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_g, H_g, Ta_g, Tc_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+        [N_g_r, TC] = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_g, H_g, Ta_g, Tc_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         num_p  = num_kp + 3;
     end
     SSE = sum((N_true_r - N_g_r).^2, 'all');
@@ -232,11 +232,11 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_wMC_2D(tumor, ntp_
                 H_t = OperatorInterp_local(kp_pr, Hr_lib, k);
                 
                 if(model==0)
-                    N_kp = OperatorRXDIF_2D_wMC(N0_r, d_g, B_t, H_t, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                    N_kp = OperatorRXDIF_2D_wMC(N0_r, d_g, B_t, H_t, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 elseif(model==1)
-                    N_kp = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_t, H_t, Ta_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                    N_kp = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_t, H_t, Ta_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 else
-                    N_kp = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_t, H_t, Ta_g, Tc_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                    N_kp = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_t, H_t, Ta_g, Tc_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 end
                 
                 J(:,i) = reshape(N_kp - N_g_r, [], 1)./dif_kp;
@@ -249,38 +249,38 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_wMC_2D(tumor, ntp_
             dif_d = d_p - d_g;
             
             if(model==0)
-                N_d = OperatorRXDIF_2D_wMC(N0_r, d_p, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                N_d = OperatorRXDIF_2D_wMC(N0_r, d_p, B_g, H_g, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 
                 J(:,num_kp+1) = reshape(N_d - N_g_r, [], 1)./dif_d;
                 
             elseif(model==1)
-                N_d = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_p, B_g, H_g, Ta_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                N_d = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_p, B_g, H_g, Ta_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 
                 %Perturb alpha1 in reduced space
                 alpha1_p = alpha1_g.*delta;
                 dif_a1 = alpha1_p - alpha1_g;
                 [Ta_t,~] = OperatorInterp_T(alpha1_p, alpha2_g, bounds, Tr_lib);
-                N_alpha1 = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_g, H_g, Ta_t, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                N_alpha1 = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_g, H_g, Ta_t, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 
                 J(:,num_kp+1) = reshape(N_d - N_g_r, [], 1)./dif_d;
                 J(:,num_kp+2) = reshape(N_alpha1 - N_g_r, [], 1)./dif_a1;
 
             else
-                N_d = OperatorRXDIF_2D_wMC_wAC(N0_r, d_p, B_g, H_g, Ta_g, Tc_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                N_d = OperatorRXDIF_2D_wMC_wAC(N0_r, d_p, B_g, H_g, Ta_g, Tc_g, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 
                 
                 %Perturb alpha1 in reduced space
                 alpha1_p = alpha1_g.*delta;
                 dif_a1 = alpha1_p - alpha1_g;
                 [Ta_t,Tc_t] = OperatorInterp_T(alpha1_p, alpha2_g, bounds, Tr_lib);
-                N_alpha1 = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_g, H_g, Ta_t, Tc_t, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                N_alpha1 = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_g, H_g, Ta_t, Tc_t, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 
                 
                 %Perturb alpha2 in reduced space
                 alpha2_p = alpha2_g.*delta;
                 dif_a2 = alpha2_p - alpha2_g;
                 [Ta_t,Tc_t] = OperatorInterp_T(alpha1_g, alpha2_p, bounds, Tr_lib);
-                N_alpha2 = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_g, H_g, Ta_t, Tc_t, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+                N_alpha2 = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_g, H_g, Ta_t, Tc_t, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
                 
                 J(:,num_kp+1) = reshape(N_d - N_g_r, [], 1)./dif_d;
                 J(:,num_kp+2) = reshape(N_alpha1 - N_g_r, [], 1)./dif_a1;
@@ -338,11 +338,11 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_wMC_2D(tumor, ntp_
         H_test = OperatorInterp_local(kp_test_r, Hr_lib, k);
         
         if(model==0)
-            [N_test, TC_test] = OperatorRXDIF_2D_wMC(N0_r, d_test, B_test, H_test, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+            [N_test, TC_test] = OperatorRXDIF_2D_wMC(N0_r, d_test, B_test, H_test, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         elseif(model==1)
-            [N_test, TC_test] = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_test, B_test, H_test, Ta_test, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+            [N_test, TC_test] = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_test, B_test, H_test, Ta_test, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         else
-            [N_test, TC_test] = OperatorRXDIF_2D_wMC_wAC(N0_r, d_test, B_test, H_test, Ta_test, Tc_test, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+            [N_test, TC_test] = OperatorRXDIF_2D_wMC_wAC(N0_r, d_test, B_test, H_test, Ta_test, Tc_test, tx_params, t, dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         end
         SSE_test   = sum((N_true_r - N_test).^2,'all');
 
@@ -436,11 +436,11 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_wMC_2D(tumor, ntp_
         H_r = OperatorInterp_local(kp_gr, Hr_lib, k);
         
         if(model==0)
-            N_pred_r = OperatorRXDIF_2D_wMC(N0_r, d_g, B_r, H_r, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+            N_pred_r = OperatorRXDIF_2D_wMC(N0_r, d_g, B_r, H_r, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         elseif(model==1)
-            N_pred_r = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_r, H_r, Ta_r, tx_params, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+            N_pred_r = OperatorRXDIF_2D_wMC_wAC_comb(N0_r, d_g, B_r, H_r, Ta_r, tx_params, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         else
-            N_pred_r = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_r, H_r, Ta_r, Tc_r, tx_params, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, V_d, Ar_lib, k, 1);
+            N_pred_r = OperatorRXDIF_2D_wMC_wAC(N0_r, d_g, B_r, H_r, Ta_r, Tc_r, tx_params, tumor.t_scan(end), dt, M_r, E, nu, matX, matY, matX_r, matY_r, V, V_s, Ar_lib, k, 1);
         end
         N_pred_r_reshape = reshape(V*N_pred_r, size(N0));
         

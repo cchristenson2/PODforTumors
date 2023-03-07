@@ -35,7 +35,7 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
     j_change = j_freq;       %Build J when equal to J frequency
     thresh   = 0.30;
     stuck_check = 0;
-    successful_update = 0;
+    successful_update = 0; guess_changed = 0;
     
     %Pull out struct variables
     N0 = tumor.N(:,:,1);
@@ -104,13 +104,13 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
         kp_test(V(:,i)>=0) = kp_up;
         kp_test(V(:,i)<0) = kp_low;
         
-        kpMode_bounds.low(i) = V(:,i)' * kp_test;
+        kpMode_bounds.up(i) = V(:,i)' * kp_test;
 
         kp_test = zeros(numel(N0),1);
         kp_test(V(:,i)>=0) = kp_low;
         kp_test(V(:,i)<0) = kp_up;
         
-        kpMode_bounds.up(i) = V(:,i)' * kp_test;
+        kpMode_bounds.low(i) = V(:,i)' * kp_test;
     end
     [Br_lib, Hr_lib] = buildLocalProlifLibrary(N_true(:,:,1), V, k, 20, kpMode_bounds);
     
@@ -126,15 +126,33 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
     %Reduce kp_g and unreduce to start
     kp_gr = V' * kp_aug(:);
     kp_g  = V * kp_gr;
+    kp_g(kp_g>kp_up)  = kp_up;
+    kp_g(kp_g<kp_low) = kp_low;
+    kp_gr = V' * kp_g(:);
+    
+    kp_gr0 = kp_gr;
+    kp_g0 = kp_g;
     
     %Initialize Operators
     A_g = OperatorInterp_A(d_g,bounds,Ar_lib);
     if(model~=0)
         [Ta_g,Tc_g] = OperatorInterp_T(alpha1_g, alpha2_g, bounds, Tr_lib);
+    else
+        Ta_g = []; Tc_g = [];
     end
+    
     B_g = OperatorInterp_local(kp_gr, Br_lib, k);
     H_g = OperatorInterp_local(kp_gr, Hr_lib, k);
     
+    
+%     B_g_test = zeros(k,k);
+%     H_g_test = zeros(k,k^2);
+%     for i = 1:numel(N0)
+%         B_g_test = B_g_test + V(i,:)'*kp_g(i)*V(i,:);
+%         H_g_test = H_g_test + V(i,:)'*kp_g(i)*kron(V(i,:),V(i,:));
+%     end
+
+
     num_kp = k;
     %Initialize SSE
     if(model==0)
@@ -286,6 +304,8 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
         A_test = OperatorInterp_A(d_test, bounds, Ar_lib);
         if(model~=0)
             [Ta_test,Tc_test] = OperatorInterp_T(alpha1_test, alpha2_test, bounds, Tr_lib);
+        else
+            Ta_test = []; Tc_test = [];
         end
         B_test = OperatorInterp_local(kp_test_r, Br_lib, k);
         H_test = OperatorInterp_local(kp_test_r, Hr_lib, k);
@@ -346,13 +366,14 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
             if(lambda>1e20)
                 lambda = 1e-20;
                 j_change = j_freq;
-                if(successful_update<=1) %Started in a local minimum, adjust initial guess
-                    kp_g  = kp_low * 5 * ones(size(N0));
+                if(successful_update<=2 && guess_changed == 0) %Started in a local minimum, adjust initial guess
+                    kp_g  = kp_up / 5 * ones(size(N0));
                     kp_g(~ROI) = 0;
                     kp_gr = V' * kp_g(:);
                     kp_g = V * kp_gr;
+                    guess_changed = 1;
                 elseif(stuck_check == 1) %searched whole range with no success
-                    disp(['FOM algorithm stuck on iteration: ',num2str(iteration)]);
+                    disp(['ROM algorithm stuck on iteration: ',num2str(iteration)]);
                     break;
                 else %Cannot find an update, start over at minimum lambda
                     stuck_check = 1;
@@ -382,9 +403,12 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
         A_r = OperatorInterp_A(d_g, bounds, Ar_lib);
         if(model~=0)
             [Ta_r,Tc_r] = OperatorInterp_T(alpha1_g, alpha2_g, bounds, Tr_lib);
+        else
+            Ta_r = []; Tc_r = [];
         end
         B_r = OperatorInterp_local(kp_gr, Br_lib, k);
         H_r = OperatorInterp_local(kp_gr, Hr_lib, k);
+
         
         if(model==0)
             N_pred_r = OperatorRXDIF_2D(N0_r, A_r, B_r, H_r, tumor.t_scan(end), dt);
@@ -490,6 +514,10 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
     outputs.V   = V;
     outputs.t_extra = t_extra_offline;
     
+    outputs.testing.kp_gr0 = kp_gr0;
+    outputs.testing.kp_g0  = kp_g0;
+    outputs.testing.updates = successful_update;
+    
     %Plotting figure
     fig = figure;
     subplot(2,4,1)
@@ -523,4 +551,5 @@ function [params, stats, outputs, fig] = ROM_LocalCalibration_2D(tumor, ntp_cal,
     subplot(2,4,7)
     plot(1:iteration, kp_r_store);
     xlabel('Iteration'); ylabel('Proliferation Rate Reduced(1/day)');
+    
 end

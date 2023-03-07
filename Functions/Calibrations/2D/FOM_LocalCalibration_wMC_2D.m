@@ -116,6 +116,9 @@ function [params, stats, outputs, fig] = FOM_LocalCalibration_wMC_2D(tumor, ntp_
     J_out = 0;
     res_out = 0;
     
+    %Setup parpool constants
+    par_M = parallel.pool.Constant(M);
+    
     %% Calibration loop
     %Calibration Loop
     iteration = 1;
@@ -131,11 +134,14 @@ function [params, stats, outputs, fig] = FOM_LocalCalibration_wMC_2D(tumor, ntp_
                 dif_kp = kp_p(idx_ROI(i)) - kp_g(idx_ROI(i));
                 
                 if(model==0)
-                    N_kp = RXDIF_2D_wMC(N0, kp_p, d_g, t, h, dt, bcs, M, E, nu, matX, matY);
+%                     N_kp = RXDIF_2D_wMC(N0, kp_p, d_g, t, h, dt, bcs, M, E, nu, matX, matY);
+                    N_kp = RXDIF_2D_wMC(N0, kp_p, d_g, t, h, dt, bcs, par_M.Value, E, nu, matX, matY);
                 elseif(model==1)
-                    N_kp = RXDIF_2D_wMC_wAC_comb(N0, kp_p, d_g, alpha1_g, tx_params, t, h, dt, bcs, M, E, nu, matX, matY);
+%                     N_kp = RXDIF_2D_wMC_wAC_comb(N0, kp_p, d_g, alpha1_g, tx_params, t, h, dt, bcs, M, E, nu, matX, matY);
+                    N_kp = RXDIF_2D_wMC_wAC_comb(N0, kp_p, d_g, alpha1_g, tx_params, t, h, dt, bcs, par_M.Value, E, nu, matX, matY);
                 else
-                    N_kp = RXDIF_2D_wMC_wAC(N0, kp_p, d_g, alpha1_g, alpha2_g, tx_params, t, h, dt, bcs, M, E, nu, matX, matY);
+%                     N_kp = RXDIF_2D_wMC_wAC(N0, kp_p, d_g, alpha1_g, alpha2_g, tx_params, t, h, dt, bcs, M, E, nu, matX, matY);
+                    N_kp = RXDIF_2D_wMC_wAC(N0, kp_p, d_g, alpha1_g, alpha2_g, tx_params, t, h, dt, bcs, par_M.Value, E, nu, matX, matY);
                 end
 
                 J(:,i) = reshape(N_kp - N_sim, [], 1)/dif_kp;
@@ -266,8 +272,9 @@ function [params, stats, outputs, fig] = FOM_LocalCalibration_wMC_2D(tumor, ntp_
             if(lambda>1e20)
                 lambda = 1e-20;
                 j_change = j_freq;
-                if(successful_update<=1) %Started in a local minimum, adjust initial guess
-                    
+                if(successful_update<=2) %Started in a local minimum, adjust initial guess
+                    kp_g       = kp_up/10 * ones(size(N0));
+                    kp_g(~ROI) = 0;
                 elseif(stuck_check == 1) %searched whole range with no success
                     disp(['FOM algorithm stuck on iteration: ',num2str(iteration)]);
                     break;

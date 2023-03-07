@@ -17,10 +17,13 @@ Output:
 Contributors: Chase Christenson
 %}
 
-function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu, matX, matY, matZ)
+function [N_sim, TC] = RXDIF_3D_wMC_wAC_comb(initial, kp, d0, alpha1, tx_params, t, h, dz, dt, bcs, M, E, nu, matX, matY, matZ)
     theta = 1; %If using volume fractions
 
     t_ = (t/dt) + 1; %Indices of densities to output
+    nt_trx = tx_params.txduration./dt; %Indices of treatment times
+    trx_on = 0; %Starts off, turns on at first treatment delivery
+    trx_cnt = 1;
     
     freq = 25;
     
@@ -38,6 +41,23 @@ function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu
     for k = 1:nt-1
         temp = zeros(sy,sx,sz);
         N = Sim(:,:,:,k);
+        
+        %Get time since last treatment
+        if(k-1>nt_trx(trx_cnt))
+            if(trx_on==0)
+                t = 0;
+            end
+            trx_on = 1;
+            if(trx_cnt < numel(nt_trx))
+                if(k-1>nt_trx(trx_cnt+1))
+                    trx_cnt=trx_cnt+1;
+                    t=0;
+                end
+                t=t+dt;
+            else
+                t=t+dt;
+            end
+        end
         
         %Space stepping
         for z = 1:sz
@@ -95,8 +115,15 @@ function [N_sim, TC] = RXDIF_3D_wMC(initial, kp, d0, t, h, dz, dt, bcs, M, E, nu
 
                     invasion = inv_y + inv_x*inv_z;
                     prolif   = N(y,x,z)*kp(y,x,z)*(1-(N(y,x,z)/theta));
+                    
+                    %Treatment calculation
+                    if(trx_on~=0)
+                        treat = alpha1*(exp(-tx_params.beta1*t) + exp(-tx_params.beta2*t))*tx_params.C(y,x,z)*N(y,x,z);
+                    else
+                        treat = 0;
+                    end
 
-                    temp(y,x,z) = N(y,x,z) + dt*(invasion + prolif);
+                    temp(y,x,z) = N(y,x,z) + dt*(invasion + prolif - treat);
                 end
             end
         end

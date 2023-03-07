@@ -108,6 +108,8 @@ function [params, stats, outputs, fig] = FOM_LocalCalibration_2D(tumor, ntp_cal,
     J_out = 0;
     res_out = 0;
     
+    
+    
     %% Calibration loop
     %Calibration Loop
     iteration = 1;
@@ -258,8 +260,9 @@ function [params, stats, outputs, fig] = FOM_LocalCalibration_2D(tumor, ntp_cal,
             if(lambda>1e20)
                 lambda = 1e-20;
                 j_change = j_freq;
-                if(successful_update<=1) %Started in a local minimum, adjust initial guess
-                    
+                if(successful_update<=2) %Started in a local minimum, adjust initial guess
+                    kp_g       = kp_up/10 * ones(size(N0));
+                    kp_g(~ROI) = 0;
                 elseif(stuck_check == 1) %searched whole range with no success
                     disp(['FOM algorithm stuck on iteration: ',num2str(iteration)]);
                     break;
