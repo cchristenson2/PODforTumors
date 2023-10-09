@@ -1,24 +1,23 @@
 %{
 Forward model for the reaction diffusion equation with AC treatment in matrix form
-dn/dt = D*d2n/dx2 + kN(1-N) - alpha1*exp(-beta1*t)*C*N - alpha2*exp(-beta2*t)*C*N
+dn/dt = D*d^2n/h^2 + kp*N(1-N) - alpha1*(exp(-beta1*t) - exp(-beta2*t))*C*N
 
 Input:
-    - Cell map from start point
+    - N0; Cell map from start point
     - A operator (diffusivity)
     - B operator (proliferation Lin)
     - H operator (proliferation Quad)
-    - T1 operator (A treatment)
-    - T2 operator (C treatment)
-    - Treatment parameters
+    - T operator (A/C treatment)
+    - tx_params; Treatment parameters struct
         - beta1 for A
         - beta2 for C
         - treatment duration
-    - Time spacing
-    - Output times
+    - t; Output times
+    - dt; Time spacing
 
 Output:
-    - Cell map at desired times
-    - Full cell map time course
+    - N_sim; Cell map at desired times
+    - TC; Full cell map time course
 
 Contributors: Chase Christenson, Graham Pash
 %}
@@ -39,20 +38,20 @@ function [N_sim, TC] = OperatorRXDIF_2D_wAC_comb(N0, A, B, H, T1, tx_params, t, 
     
     for k = 2:nt
         %Get time since last treatment
-        %Get time since last treatment
         if(k-1>nt_trx(trx_cnt))
             if(trx_on==0)
                 t = 0;
-            end
-            trx_on = 1;
-            if(trx_cnt < numel(nt_trx))
-                if(k-1>nt_trx(trx_cnt+1))
-                    trx_cnt=trx_cnt+1;
-                    t=0;
-                end
-                t=t+dt;
+                trx_on = 1;
             else
-                t=t+dt;
+                if(trx_cnt < numel(nt_trx))
+                    if(k-1>nt_trx(trx_cnt+1))
+                        trx_cnt=trx_cnt+1;
+                        t=0;
+                    end
+                    t=t+dt;
+                else
+                    t=t+dt;
+                end
             end
         end
         %Solve treatment effects

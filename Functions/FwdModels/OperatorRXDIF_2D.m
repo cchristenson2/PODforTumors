@@ -1,18 +1,18 @@
 %{
 Forward model for the reaction diffusion equation
-dn/dt = D*d2n/dx2 + kN(1-N)
+dn/dt = D*d^2n/h^2 + kp*N(1-N)
 
 Input:
-    - Cell map from start point
+    - N0; Cell map from start point
     - A operator (diffusivity)
     - B operator (proliferation Lin)
     - H operator (proliferation Quad)
-    - Time spacing
-    - Output times
+    - t; Outputs times
+    - dt; Time spacing
 
 Output:
-    - Cell map at desired times
-    - Full cell map time course
+    - N_sim; Cell map at desired times
+    - TC; Full cell map time course (do not use in reduced form)
 
 Contributors: Chase Christenson, Graham Pash
 %}
@@ -26,8 +26,9 @@ function [N_sim, TC] = OperatorRXDIF_2D(N0, A, B, H, t, dt)
     N(:,1) = N0;
     
     for k = 2:nt
-        N(:,k) = N(:,k-1) + dt*(A*N(:,k-1) + B*N(:,k-1) - H*kron(N(:,k-1), N(:,k-1)));
+        N(:,k) = N(:,k-1) + dt*(A*N(:,k-1) + B*N(:,k-1) - (H*kron(N(:,k-1), N(:,k-1))));
     end
-    TC = squeeze(sum(N,1));
+    TC = N;
+%     N_full = N_sim;
     N_sim = N(:,t_ind);
 end
