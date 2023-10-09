@@ -19,7 +19,11 @@ Output:
     - N_cal; Calibrated cell map at same time as data was acquired
 
 Contributors: Chase Christenson
+
 Based off reference:
+Hormuth DA 2nd, Eldridge SL, Weis JA, Miga MI, Yankeelov TE. 
+Mechanically Coupled Reaction-Diffusion Model to Predict Glioma Growth: Methodological Details. 
+Methods Mol Biol. 2018;1711:225-241. doi: 10.1007/978-1-4939-7493-1_11.
 
 %}
 
@@ -84,7 +88,7 @@ function [params,N_cal] = calibrateRXDIF_ROM(initial, data, library, bounds, t, 
         else % model = 2
             alpha_perturb = alpha_guess*delta;
             alpha_dif = alpha_perturb - alpha_guess;
-            T_guess = OperatorInterp(alpha_perturb,library.Tr_lib);
+            T_perturb = OperatorInterp(alpha_perturb,library.Tr_lib);
             
             N_d = OperatorRXDIF_2D_wAC_comb(initial, A_perturb, B_guess, H_guess, T_guess, tx_params, t, dt);
             N_kp = OperatorRXDIF_2D_wAC_comb(initial, A_guess, B_perturb, H_perturb, T_guess, tx_params, t, dt);
@@ -145,7 +149,7 @@ function [params,N_cal] = calibrateRXDIF_ROM(initial, data, library, bounds, t, 
             d_guess  = d_test; A_guess = A_test;
             kp_guess = kp_test; B_guess = B_test; H_guess = H_test;
             if model == 2
-                alpha_test = alpha_guess; T_guess = T_test; %#ok<NASGU>
+                alpha_guess = alpha_test; T_guess = T_test;
             end
             
             N_guess = N_test;
@@ -154,8 +158,12 @@ function [params,N_cal] = calibrateRXDIF_ROM(initial, data, library, bounds, t, 
             
             %Check if model has converged
             if(SSE-SSE_test < e_conv)
-                disp(['Algorithm converged on iteration: ',num2str(iter)]);
+                disp(['ROM algorithm converged on iteration: ',num2str(iter)]);
                 break;
+            end
+            
+            if SSE_test < e_tol
+                disp(['ROM tolerance reached on iteration: ',num2str(iter)]);
             end
             
             SSE = SSE_test;

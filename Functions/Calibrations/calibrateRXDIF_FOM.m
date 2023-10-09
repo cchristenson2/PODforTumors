@@ -20,7 +20,11 @@ Output:
     - N_cal; Calibrated cell map at same time as data was acquired
 
 Contributors: Chase Christenson
+
 Based off reference:
+Hormuth DA 2nd, Eldridge SL, Weis JA, Miga MI, Yankeelov TE. 
+Mechanically Coupled Reaction-Diffusion Model to Predict Glioma Growth: Methodological Details. 
+Methods Mol Biol. 2018;1711:225-241. doi: 10.1007/978-1-4939-7493-1_11.
 
 %}
 
@@ -72,7 +76,7 @@ function [params,N_cal] = calibrateRXDIF_FOM(initial, data, bounds, t, h, dt, bc
         if model == 1
             N_d = RXDIF_2D(initial, kp_guess.*ones(sy,sx), d_perturb, t, h, dt, bcs);
             N_kp = RXDIF_2D(initial, kp_perturb.*ones(sy,sx), d_guess, t, h, dt, bcs);
-        else % model = 2
+        elseif model == 2
             alpha_perturb = alpha_guess*delta;
             alpha_dif = alpha_perturb - alpha_guess;
             
@@ -127,7 +131,7 @@ function [params,N_cal] = calibrateRXDIF_FOM(initial, data, bounds, t, h, dt, bc
             d_guess  = d_test;
             kp_guess = kp_test;
             if model == 2
-                alpha_test = alpha_guess;
+                alpha_guess = alpha_test;
             end
             
             N_guess = N_test;
@@ -136,16 +140,20 @@ function [params,N_cal] = calibrateRXDIF_FOM(initial, data, bounds, t, h, dt, bc
             
             %Check if model has converged
             if(SSE-SSE_test < e_conv)
-                disp(['Algorithm converged on iteration: ',num2str(iter)]);
+                disp(['FOM algorithm converged on iteration: ',num2str(iter)]);
                 break;
             end
             
-            SSE = SSE_test;
+            if SSE_test < e_tol
+                disp(['FOM tolerance reached on iteration: ',num2str(iter)]);
+            end
             
+            SSE = SSE_test;
         else %Update is not better            
             lambda = lambda*fail; %Increase lambda
         end
         iter = iter + 1;
+        
     end
     
     %Save best guess simulation

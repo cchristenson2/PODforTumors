@@ -45,9 +45,7 @@ function [tumor] = loadData(location)
     
     theta = 0.7405 * ((temp.schedule_info.imagedims(1))^2 * temp.schedule_info.imagedims(3)) / 4.189e-6;
     
-%     N = N./max(N(:));
     N = N./theta;
-    N(N>1) = 0.99999;
     
     if(dims==2)
         tumor.bcs = buildBoundaries_2D(logical(temp.image_data.BreastMask));
@@ -82,11 +80,11 @@ function [tumor] = loadData(location)
     catch
     end
     try
-        tumor.beta1 = temp.beta1;
+        tumor.beta1 = temp.params.beta1;
     catch
     end
     try
-        tumor.beta2 = temp.beta2;
+        tumor.beta2 = temp.params.beta2;
     catch
     end
     

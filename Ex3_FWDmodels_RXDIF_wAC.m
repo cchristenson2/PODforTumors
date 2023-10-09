@@ -1,8 +1,9 @@
 %{
 This script walks through the creation of a ROM and its usage to solve a forward model
 The reaction-diffusion model is used as an example, with logistic growth
+and cell death due to chemotherapy
 
-dn/dt = D*d^2n/h^2 + kp*N(1-N)
+dn/dt = D*d^2n/h^2 + kp*N(1-N) - alpha*C*N*sum_{i=1}^{T}exp(-t*beta_i)
 
 Section 1:
     - Loading in the data
@@ -24,7 +25,7 @@ clear; clc; close all;
 addpath(genpath(pwd))
 
 %We use example data that has been processed and has correct formatting for loading
-location = [pwd,'\Data\Ex1_patient.mat'];
+location = [pwd,'\Data\Ex3_patient.mat'];
 tumor = loadData(location);
 
 %Extract necessary information for forward model
@@ -33,6 +34,12 @@ N0 = tumor.N(:,:,1); %2D initial cell count
 
 kp = tumor.params.kp; %true parameters are known for the virtual patient
 d = tumor.params.d;
+alpha = tumor.params.alpha;
+
+tx_params.txduration = tumor.t_trx;
+tx_params.beta1 = tumor.beta1;
+tx_params.beta2 = tumor.beta2;
+tx_params.C     = tumor.AUC;
 
 h = tumor.h; %Grid spacing comes directly from imaging resolution
 
@@ -44,7 +51,7 @@ t = tumor.t_scan;
 dt = 0.50;
 
 start = tic;
-[N_FOM,TC_FOM] = RXDIF_2D(N0, kp.*ones(sy,sx), d, t(2:end), h, dt, bcs);
+[N_FOM,TC_FOM] = RXDIF_2D_wAC_comb(N0, kp.*ones(sy,sx), d, alpha, tx_params, t(2:end), h, dt, bcs);
 t_FOM = toc(start); %time to run in seconds
 
 disp(['FOM runtime = ',num2str(t_FOM),' sec']);
@@ -53,7 +60,7 @@ fprintf('\n');
 start = tic;
 %Step one is to prep the snapshot data for SVD by filling gaps in imaging data
 %Here we will do that with the known parameters
-N_augmented = augmentCellMaps_2D_knownParams(tumor.N, tumor.t_scan, h, dt, kp, d, bcs);
+N_augmented = augmentCellMaps_2D_knownParams_wAC(tumor.N, tumor.t_scan, h, dt, kp, d, alpha, tx_params, bcs);
 
 %Basis is built using SVD
 [V,k] = getProjectionMatrix(N_augmented, 0);
@@ -63,10 +70,12 @@ N_augmented = augmentCellMaps_2D_knownParams(tumor.N, tumor.t_scan, h, dt, kp, d
 A = assembleA(N0, d, h, [], bcs);
 B = assembleB(N0, kp);
 % H = assembleH(N0, kp);
+T = assembleT(N0, alpha);
 
 %Reduce these with a Galerkin Projection
 A_r = V' * A * V;
 B_r = V' * B * V;
+T_r = V' * T * V;
 
 % H_r = V' * H * kron(V,V); %This is the exact method, but is a large matrix that typically can't be solved
 %Can approximate with 100% accuracy since we have linear structure in the full operator
@@ -93,7 +102,7 @@ disp(['ROM offline build time = ',num2str(t_offline),' sec']);
 fprintf('\n');
 %% Run ROM with known parameters
 start = tic;
-N_ROM_r = OperatorRXDIF_2D(N0_r, A_r, B_r, H_r, t(2:end), dt);
+N_ROM_r = OperatorRXDIF_2D_wAC_comb(N0_r, A_r, B_r, H_r, T_r, tx_params, t(2:end), dt);
 t_online = toc(start);
 
 %Must resize ROM simulations to compare to full size

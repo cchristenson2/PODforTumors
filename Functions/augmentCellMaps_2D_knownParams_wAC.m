@@ -17,7 +17,7 @@ Contributors: Chase Christenson
 %}
 
 
-function N_aug = augmentCellMaps_2D_knownParams(N, t, h, dt, kp, d, bcs)
+function N_aug = augmentCellMaps_2D_knownParams_wAC(N, t, h, dt, kp, d, alpha, tx_params, bcs)
 
     %How many gaps do we need to fill in?
     [sy,sx,nt] = size(N);
@@ -32,9 +32,9 @@ function N_aug = augmentCellMaps_2D_knownParams(N, t, h, dt, kp, d, bcs)
         
         %Get time to run for current gap
         t_end = t(i+1) - t(i);
-        t_out = 0:dt:t_end - dt; %We do not need last image from simulation
+        t_out = 0:dt:t_end - dt; %We do not last image from simulation
         
-        temp = RXDIF_2D(N0,kp.*ones(sy,sx),d,t_out,h,dt,bcs);
+        temp = RXDIF_2D_wAC_comb(N0,kp.*ones(sy,sx),d,alpha,tx_params,t_out,h,dt,bcs);
         
         N_aug = cat(3, N_aug, temp);
     end

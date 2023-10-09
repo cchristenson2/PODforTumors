@@ -28,6 +28,7 @@ addpath(genpath(fileparts(pwd)))
 
 kp_range = [1e-3,1e-1];
 d_range = [1e-6,5e-1];
+alpha_range = [1e-6, 0.8];
 
 %Set grid spacing
 h  = 1; %mm
@@ -45,12 +46,12 @@ N0 = zeros(sy,sx);
 %Here a simple alternative is provided
 Tissues       = ones(sy,sx);
 BreastMask    = ones(sy,sx);
-AUC           = zeros(sy,sx);
+AUC           = ones(sy,sx);
 
 %Set timing of events for imaging vs treatment
-schedule_info.schedule = ['S'; 'S'; 'S']; %S for scan, A for chemo
+schedule_info.schedule = ['S'; 'A'; 'A'; 'S'; 'A'; 'A';'S']; %S for scan, A for chemo
 
-days = [0, 30, 60];
+days = [0, 10, 20, 30, 40, 50, 60];
 schedule_info.times = [0, diff(days)]; %Days since last event array
 
 %Seed initial tumor
@@ -58,22 +59,40 @@ schedule_info.times = [0, diff(days)]; %Days since last event array
 z = exp(-((X-(sx-1)/2).^2+(Y-(sy-1)/2).^2)/50);
 N0(z>0.10) = 0.50; %Initial volume fraction of 50%
 
-%Sample true parameters for the virtual data
-kp = kp_range(1) + rand(1,1).*(diff(kp_range));
-d  = d_range(1) + rand(1,1).*(diff(d_range));
-
-params.kp = kp;
-params.d  = d;
-
-%Run forward evaluation to get true data
 bcs = buildBoundaries_2D(BreastMask);
-t = cumsum(schedule_info.times(schedule_info.schedule=='S'));
+t_all = cumsum(schedule_info.times);
+
+t = t_all(schedule_info.schedule=='S');
+
+tx_params.txduration = t_all(schedule_info.schedule=='A');
+tx_params.beta1 = 0.25;
+tx_params.beta2 = 2.0;
+tx_params.C     = AUC;
+
+params.beta1 = tx_params.beta1;
+params.beta2 = tx_params.beta2;
 
 dt = 0.5;
 
-N_true = RXDIF_2D(N0, kp.*ones(sy,sx), d, t, h, dt, bcs);
+run = 1;
+while run == 1
+    %Sample true parameters for the virtual data
+    kp = kp_range(1) + rand(1,1).*(diff(kp_range));
+    d  = d_range(1) + rand(1,1).*(diff(d_range));
+    alpha  = alpha_range(1) + rand(1,1).*(diff(alpha_range));
 
+    %Run forward evaluation to get true data
+    N_true = RXDIF_2D_wAC_comb(N0, kp.*ones(sy,sx), d, alpha, tx_params, t, h, dt, bcs);
+    
+    %Ensure there is residual tumor at last visit
+    if sum(N_true(:,:,end),'all') > sum(N0, 'all')*0.05
+        run = 0;
+    end
+end
 %Prep variables and store
+params.kp = kp;
+params.d  = d;
+params.alpha = alpha;
 
 N_true = N_true.*theta;
 for i = 1:size(N_true,3)
@@ -84,4 +103,4 @@ image_data.Tissues    = Tissues;
 image_data.BreastMask = BreastMask;
 image_data.AUC        = AUC;
 
-save('Ex1_patient.mat','image_data','params','schedule_info');
+save('Ex3_patient.mat','image_data','params','schedule_info');
