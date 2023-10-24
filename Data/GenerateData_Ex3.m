@@ -1,6 +1,6 @@
 %{ 
 Script for generating example virtual data
-This script is for a base diffusion + logistic growth equation.
+This script is for a base diffusion + logistic growth - treatment equation.
 Data is coded to match patient data formatting from processed MRI
 
 Saves:
@@ -44,9 +44,9 @@ N0 = zeros(sy,sx);
 
 %These matrices would typically be provided by imaging data
 %Here a simple alternative is provided
-Tissues       = ones(sy,sx);
-BreastMask    = ones(sy,sx);
-AUC           = ones(sy,sx);
+Tissues       = ones(sy,sx); %Only used in mechanics models
+BreastMask    = ones(sy,sx); %Included whole square domain, could be a mask around breast
+AUC           = ones(sy,sx); %Constant drug over whole domain
 
 %Set timing of events for imaging vs treatment
 schedule_info.schedule = ['S'; 'A'; 'A'; 'S'; 'A'; 'A';'S']; %S for scan, A for chemo
@@ -75,7 +75,7 @@ params.beta2 = tx_params.beta2;
 dt = 0.5;
 
 run = 1;
-while run == 1
+while run == 1 %Loop to ensure last visit has residual tumor to calibrate
     %Sample true parameters for the virtual data
     kp = kp_range(1) + rand(1,1).*(diff(kp_range));
     d  = d_range(1) + rand(1,1).*(diff(d_range));

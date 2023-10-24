@@ -18,7 +18,6 @@ Saves:
     - params struct
         - kp; true proliferation rate
         - d; true diffusivity
-        - alpha; true drug efficacy
 
 Contributors: Chase Christenson
 %}
@@ -43,9 +42,9 @@ N0 = zeros(sy,sx);
 
 %These matrices would typically be provided by imaging data
 %Here a simple alternative is provided
-Tissues       = ones(sy,sx);
-BreastMask    = ones(sy,sx);
-AUC           = zeros(sy,sx);
+Tissues       = ones(sy,sx); %Only used in mechanics models
+BreastMask    = ones(sy,sx); %Included whole square domain, could be a mask around breast
+AUC           = zeros(sy,sx); %Constant drug over whole domain
 
 %Set timing of events for imaging vs treatment
 schedule_info.schedule = ['S'; 'S'; 'S']; %S for scan, A for chemo

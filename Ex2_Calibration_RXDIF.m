@@ -24,9 +24,14 @@ Contributors: Chase Christenson
 clear; clc; close all;
 
 addpath(genpath(pwd))
+if(ispc)
+    back = '\';
+else
+    back = '/';
+end
 
 %We use example data that has been processed and has correct formatting for loading
-location = [pwd,'\Data\Ex1_patient.mat'];
+location = [pwd,back,'Data',back,'Ex1-2_patient.mat'];
 tumor = loadData(location);
 
 %Extract necessary information for forward model
