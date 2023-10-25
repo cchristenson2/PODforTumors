@@ -3,16 +3,15 @@
 
 This script walks through the creation of a ROM and its calibrate parameters to data
 The reaction-diffusion model is used as an example, with logistic growth
+- The proliferation map is now a spatially varying field
 
-dn/dt = D*d^2n/h^2 + kp*N(1-N)
+dn/dt = D*d^2n/h^2 + kp(x)*N(1-N)
 
 Section 1:
     - Loading in the data
 Section 2:
-    - Calibrating parameters using the FOM
-Section 3:
     - Building a library of reduced models based on snapshots
-Section 4:
+Section 3:
     - Calibrating parameters using the ROM
 
 Contributors: Chase Christenson
@@ -31,7 +30,7 @@ else
 end
 
 %We use example data that has been processed and has correct formatting for loading
-location = [pwd,back,'Data',back,'Ex1-2_patient.mat'];
+location = [pwd,back,'Data',back,'Ex5_patient.mat'];
 tumor = loadData(location);
 
 %Extract necessary information for forward model
@@ -42,6 +41,12 @@ N_true = tumor.N(:,:,2:end);
 
 kp = tumor.params.kp; %true parameters are known for the virtual patient
 d = tumor.params.d;
+alpha = tumor.params.alpha;
+
+tx_params.txduration = tumor.t_trx;
+tx_params.beta1 = tumor.beta1;
+tx_params.beta2 = tumor.beta2;
+tx_params.C     = tumor.AUC;
 
 h = tumor.h; %Grid spacing comes directly from imaging resolution
 
@@ -50,31 +55,15 @@ bcs = tumor.bcs;
 t = tumor.t_scan;
 
 %% Calibrate parameters with FOM
-dt = 0.50;
-
-bounds = [1e-6, 5e-1; 1e-3, 1e-1]; %Diffusivity; proliferation
-
-start = tic;
-[params_FOM, N_cal_FOM] = calibrateRXDIF_FOM(N0, N_true, bounds, t(2:end), h, dt, bcs, 1, []);
-t_FOM = toc(start); %time to run in seconds
-disp(['FOM calibration time = ',num2str(t_FOM),' sec']);
-
-%Compare calibrated cell maps to the measured data
-for i = 1:size(N_true,3)
-    CCC = CCC_calc(N_true(:,:,i), N_cal_FOM(:,:,i));
-    disp(['Visit ',num2str(i+1),' CCC between FOM and measured = ',num2str(CCC,'%.3f')]);
-end
-fprintf('\n');
-
-%Compare output parameters to the true values
-disp(['Prolfieration % error for FOM = ',num2str(100*(params_FOM.kp - tumor.params.kp)/tumor.params.kp, '%.3f')]);
-disp(['Diffusivity % error for FOM = ',num2str(100*(params_FOM.d - tumor.params.d)/tumor.params.d, '%.3f')]);
-fprintf('\n');
+%Not shown, lengthy calibration without HPC and highly parallel code
 
 %% Build ROM
+dt = 0.50;
+bounds = [1e-6, 1e-2; 1e-3, 1e-1; 1e-6, 0.8]; %Diffusivity; proliferation; alpha
+
 start = tic;
-%First build operators that represent the bounds of the potential parameters
-param_types = {'A',1; 'B',2};
+%First build operators that represent the bounds of the potential parameters (Global parameters only)
+param_types = {'A',1; 'T',3};
 fmt = '%.6f'; %naming convention that gets used for operator indexing
 
 Lib = buildLibrary(bounds,N0,h,[],bcs,param_types,fmt,2); 
@@ -89,12 +78,13 @@ N_augmented = augmentCellMaps_2D(cat(3,N0,N_true), t(2:end), 4); %Last parameter
 [V,k] = getProjectionMatrix(N_augmented, 0);
 
 %Step 4: Reduce the library with the new basis
-Lib_r = reduceLibrary(Lib, V, param_types, []);
+Lib_r = reduceLibrary(Lib, V, param_types, tx_params.C);
 %Notes - Last [] represents the concentration map, which is needed for treatment models
 
-% H-library is built individually since multiple N X N^2 matrices are memory intensive
-%Approximate method builds reduced operators directly, without middle step to build the full operator
-Lib_r.Hr_lib = buildAndReduce_GlobalKp(bounds(2,:),V,fmt,2,'H');
+% B and H libraries represent spatially varying parameters. To account for this,
+% libraries are built for each mode in the basis, V
+[Lib_r.Br_lib, kp_mode_bounds] = buildAndReduce_LocalKp(bounds(2,:),V,fmt,3,'B');
+Lib_r.Hr_lib = buildAndReduce_LocalKp(bounds(2,:),V,fmt,3,'H');
 
 %Step 5: Reduce data for fwd evaluations and comparisons
 %Reduce initial conditions
@@ -108,20 +98,11 @@ end
 
 t_offline = toc(start);
 
-%Visualize the modes for reduction
-figure
-for i = 1:k
-    subplot(1,k,i)
-    imagesc(reshape(V(:,i),sy,sx),[min(V(:)), max(V(:))]);
-    axis image; axis off; colorbar;
-    title(['Mode shape ',num2str(i)]);
-end
-
 disp(['ROM offline build time = ',num2str(t_offline),' sec']);
 fprintf('\n');
 %% Calibrate parameters with ROM
 start = tic;
-[params_ROM, N_cal_ROM] = calibrateRXDIF_ROM(N0_r, N_true_r, Lib_r, bounds, t(2:end), dt, 1, []);
+[params_ROM, N_cal_ROM] = calibrateRXDIF_localKp_ROM(N0_r, N_true_r, Lib_r, bounds, kp_mode_bounds, t(2:end), dt, 2, tx_params, V);
 t_ROM = toc(start); %time to run in seconds
 disp(['ROM calibration time = ',num2str(t_ROM),' sec']);
 
@@ -133,33 +114,37 @@ end
 fprintf('\n');
 
 %Compare output parameters to the true values
-disp(['Prolfieration % error for ROM = ',num2str(100*(params_ROM.kp - tumor.params.kp)/tumor.params.kp, '%.3f')]);
 disp(['Diffusivity % error for ROM = ',num2str(100*(params_ROM.d - tumor.params.d)/tumor.params.d, '%.3f')]);
+disp(['Alpha % error for ROM = ',num2str(100*(params_ROM.alpha - tumor.params.alpha)/tumor.params.alpha, '%.3f')]);
+idx = intersect(find(abs(kp)>1e-3), find(abs(params_ROM.kp)>1e-3));
+disp(['Proliferation CCC in overlap for ROM = ',num2str(CCC_calc(kp(idx), params_ROM.kp(idx)), '%.3f')]);
 fprintf('\n');
-
-disp(['Total time % change = ',num2str(100*((t_offline+t_ROM) - t_FOM)/t_FOM),'%']);
 
 %% Visualize calibration
 nt = size(tumor.N, 3);
 figure
 for i = 1:nt
-    subplot(3,nt,i)
+    subplot(2,nt,i)
     imagesc(tumor.N(:,:,i), [0,1]); 
     axis image; colorbar; title(['Visit ',num2str(i)]);
     if i==1,  ylabel('Measured data'), end
     
     if i~=1
-        subplot(3,nt,i+nt)
-        imagesc(N_cal_FOM(:,:,i-1), [0,1]);
-        axis image; colorbar;
-        if i==2,  ylabel('FOM calibration'), end
-        
-        subplot(3,nt,i+2*nt)
+
+        subplot(2,nt,i+nt)
         imagesc(reshape(V*N_cal_ROM(:,i-1),sy,sx), [0,1]);
         axis image; colorbar;
         if i==2,  ylabel('ROM calibration'), end
     end
 end
+
+figure
+subplot(1,3,1)
+imagesc(kp, bounds(2,:)); axis image; title('True Proliferation');
+subplot(1,3,2)
+imagesc(reshape(params_ROM.kp,size(N0)), bounds(2,:)); axis image; title('ROM Proliferation');
+subplot(1,3,3)
+imagesc(kp - reshape(params_ROM.kp,size(N0))); axis image; title('True - ROM'); colorbar;
 
 
 %{

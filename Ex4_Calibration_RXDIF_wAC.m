@@ -102,6 +102,7 @@ Lib_r = reduceLibrary(Lib, V, param_types, tx_params.C);
 %Approximate method builds reduced operators directly, without middle step to build the full operator
 Lib_r.Hr_lib = buildAndReduce_GlobalKp(bounds(2,:),V,fmt,2,'H');
 
+%Step 5: Reduce data for fwd evaluations and comparisons
 %Reduce initial conditions
 N0_r = V' * N0(:);
 

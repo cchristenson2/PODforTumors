@@ -22,9 +22,9 @@ Output:
 Contributors: Chase Christenson
 
 Based off reference:
-Hormuth DA 2nd, Eldridge SL, Weis JA, Miga MI, Yankeelov TE. 
-Mechanically Coupled Reaction-Diffusion Model to Predict Glioma Growth: Methodological Details. 
-Methods Mol Biol. 2018;1711:225-241. doi: 10.1007/978-1-4939-7493-1_11.
+Hormuth, David A. et al. 
+“Mechanically Coupled Reaction-Diffusion Model to Predict Glioma Growth: 
+Methodological Details.” Cancer Systems Biology 1711 (2018): 225–241.
 
 %}
 

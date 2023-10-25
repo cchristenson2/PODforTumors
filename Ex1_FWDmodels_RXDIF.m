@@ -142,6 +142,4 @@ Notes: due to the offline stage the ROM is slower than a single full order solve
 
 If we have to perform at least 2 runs of the 2D FOM, the time added by building
 the ROM, is saved on the back-end due to the speed of the ROM
-
-The number of forward runs required for ROM to surpass FOM is larger in 3D
 %}
