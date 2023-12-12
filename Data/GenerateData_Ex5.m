@@ -81,13 +81,21 @@ params.beta2 = tx_params.beta2;
 
 dt = 0.5;
 
-corr.name = 'turbulent';
-corr.c0 = 20; corr.c1 = 5; corr.sigma = 1;
-mesh = [X(:) Y(:)]; % 2-D mesh
-temp = randomfield(corr,mesh);
-kp_mean = kp_range(1) + rand(1,1).*(diff(kp_range));
-    
-kp_map = reshape(normalize(temp,'range',kp_range),sy,sx);
+% corr.name = 'turbulent';
+% corr.c0 = 20; corr.c1 = 5; corr.sigma = 1;
+% mesh = [X(:) Y(:)]; % 2-D mesh
+% temp = randomfield(corr,mesh);
+% kp_mean = kp_range(1) + rand(1,1).*(diff(kp_range));
+%     
+% kp_map = reshape(normalize(temp,'range',kp_range),sy,sx);
+
+[X_r, Y_r] = meshgrid(linspace(1,sx,round(sx/4)),linspace(1,sy,round(sy/4)));
+mask = zeros(sy,sx);
+mask(N0~=0) = 1;
+mask_r = logical(interp2(X,Y,mask,X_r,Y_r));
+kp_r = zeros(size(mask_r));
+kp_r(mask_r~=0) = kp_range(1) + rand(numel(mask_r(mask_r~=0)),1)*diff(kp_range);
+kp_map = interp2(X_r,Y_r,kp_r,X,Y);
     
 run = 1;
 while run == 1
