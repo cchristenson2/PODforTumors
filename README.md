@@ -1,6 +1,6 @@
 # PODforTumors
 ###  Functions and examples for reduced order modeling of PDEs applied to triple negative breast cancer
-Associated manuscript: Fast model calibration for predicting the response of breast cancer to chemotherapy using proper orthogonal decomposition
+Associated manuscript: Fast model calibration for predicting the response of breast cancer to chemotherapy using proper orthogonal decomposition (unpublished)
 
 Authors: Chase Christenson, Chengyue Wu, David A. Hormuth II, Graham Pash, Casey Stowers, Megan LaMonica, Karen Wilcox, Jingfei Ma, Gaiane M. Rauch, Thomas E. Yankeelov
 
